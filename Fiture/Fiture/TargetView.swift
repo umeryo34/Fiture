@@ -37,7 +37,7 @@ struct TargetView: View {
                 }
                 
                 TabButton(
-                    icon: "fork.knife",
+                    icon: "medal",
                     title: "達成済み",
                     isSelected: selectedTab == 2
                 ) {
@@ -111,14 +111,14 @@ struct ProgressView: View {
 struct NutritionView: View {
     var body: some View {
         VStack {
-            Image(systemName: "fork.knife")
+            Image(systemName: "medal")
                 .font(.system(size: 80))
                 .foregroundColor(.orange)
                 .padding()
-            Text("栄養")
+            Text("達成済み")
                 .font(.title2)
                 .fontWeight(.semibold)
-            Text("食事を記録しましょう")
+            Text("目標に向けて行動しよう")
                 .font(.subheadline)
                 .foregroundColor(.gray)
         }
@@ -126,5 +126,5 @@ struct NutritionView: View {
 }
 
 #Preview {
-    TargetTabView()
+    TargetView()
 }
