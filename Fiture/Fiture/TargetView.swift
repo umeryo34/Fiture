@@ -55,7 +55,7 @@ struct TargetView: View {
                 ProgressView()
                     .tag(1)
                 
-                NutritionView()
+                AchievementView()
                     .tag(2)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
@@ -86,41 +86,6 @@ struct TabButton: View {
                 RoundedRectangle(cornerRadius: 10)
                     .fill(isSelected ? Color.blue.opacity(0.1) : Color.clear)
             )
-        }
-    }
-}
-
-
-struct ProgressView: View {
-    var body: some View {
-        VStack {
-            Image(systemName: "chart.line.uptrend.xyaxis")
-                .font(.system(size: 80))
-                .foregroundColor(.green)
-                .padding()
-            Text("進捗")
-                .font(.title2)
-                .fontWeight(.semibold)
-            Text("あなたの成長を確認")
-                .font(.subheadline)
-                .foregroundColor(.gray)
-        }
-    }
-}
-
-struct NutritionView: View {
-    var body: some View {
-        VStack {
-            Image(systemName: "medal")
-                .font(.system(size: 80))
-                .foregroundColor(.orange)
-                .padding()
-            Text("達成済み")
-                .font(.title2)
-                .fontWeight(.semibold)
-            Text("目標に向けて行動しよう")
-                .font(.subheadline)
-                .foregroundColor(.gray)
         }
     }
 }
