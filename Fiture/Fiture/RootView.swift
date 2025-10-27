@@ -71,23 +71,6 @@ struct RecordView: View {
     }
 }
 
-struct UserView: View {
-    var body: some View {
-        VStack {
-            Image(systemName: "person.fill")
-                .font(.system(size: 80))
-                .foregroundColor(.purple)
-                .padding()
-            Text("ユーザー")
-                .font(.title2)
-                .fontWeight(.semibold)
-            Text("プロフィール設定")
-                .font(.subheadline)
-                .foregroundColor(.gray)
-        }
-    }
-}
-
 #Preview {
     RootView()
 }
