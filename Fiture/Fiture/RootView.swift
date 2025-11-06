@@ -37,23 +37,6 @@ struct RootView: View {
     }
 }
 
-struct HomeView: View {
-    var body: some View {
-        VStack {
-            Image(systemName: "house.fill")
-                .font(.system(size: 80))
-                .foregroundColor(.blue)
-                .padding()
-            Text("ホーム")
-                .font(.title2)
-                .fontWeight(.semibold)
-            Text("メイン画面です")
-                .font(.subheadline)
-                .foregroundColor(.gray)
-        }
-    }
-}
-
 struct RecordView: View {
     var body: some View {
         VStack {
