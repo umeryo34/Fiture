@@ -8,6 +8,9 @@
 import SwiftUI
 
 struct HomeView: View {
+    @State private var userName: String = "ユーザー"
+    @State private var isLoading: Bool = true
+    
     var body: some View {
         VStack(alignment: .leading) {
             // 最上部バー: カレンダー / ロゴスペース / 検索 / 通知
@@ -46,7 +49,7 @@ struct HomeView: View {
                     .font(.system(size: 40))
                     .foregroundColor(.purple)
                     .padding(10)
-                Text("こんにちは ユーザーさん")
+                Text("こんにちは \(userName)さん")
                     .font(.title3)
                     .foregroundColor(.primary)
                     .lineLimit(1)
@@ -79,6 +82,35 @@ struct HomeView: View {
             }
 
             Spacer()
+        }
+        .onAppear {
+            fetchUserName()
+        }
+    }
+    
+    private func fetchUserName() {
+        Task {
+            do {
+                // ここでは最初のユーザーを取得（実際は認証済みユーザーのIDで取得）
+                let response: [User] = try await SupabaseManager.shared.client
+                    .from("users")
+                    .select()
+                    .limit(1)
+                    .execute()
+                    .value
+                
+                if let user = response.first {
+                    await MainActor.run {
+                        userName = user.name
+                        isLoading = false
+                    }
+                }
+            } catch {
+                print("ユーザー名の取得に失敗: \(error)")
+                await MainActor.run {
+                    isLoading = false
+                }
+            }
         }
     }
 }
