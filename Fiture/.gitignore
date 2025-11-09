@@ -1,0 +1,6 @@
+# --- Xcode user-specific files ---
+xcuserdata/
+*.xcuserstate
+
+# --- Supabase credentials ---
+Fiture/Config.swift
