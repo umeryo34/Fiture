@@ -14,9 +14,8 @@ class SupabaseManager {
     let client: SupabaseClient
     
     private init() {
-        // ここにSupabaseのURLとANON KEYを入れてください
-        let supabaseURL = URL(string: "YOUR_SUPABASE_URL")!
-        let supabaseKey = "YOUR_SUPABASE_ANON_KEY"
+        let supabaseURL = URL(string: Config.supabaseURL)!
+        let supabaseKey = Config.supabaseAnonKey
         
         client = SupabaseClient(
             supabaseURL: supabaseURL,
