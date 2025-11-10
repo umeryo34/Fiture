@@ -8,12 +8,14 @@
 import SwiftUI
 
 struct HomeView: View {
-    @State private var userName: String = "ユーザー"
-    @State private var isLoading: Bool = true
+    @EnvironmentObject var authManager: AuthManager
+    
+    private var userName: String {
+        authManager.currentUser?.name ?? "ユーザー"
+    }
     
     var body: some View {
         VStack(alignment: .leading) {
-            // 最上部バー: カレンダー / ロゴスペース / 検索 / 通知
             HStack {
                 Button(action: {}) {
                     Image(systemName: "calendar")
@@ -82,35 +84,6 @@ struct HomeView: View {
             }
 
             Spacer()
-        }
-        .onAppear {
-            fetchUserName()
-        }
-    }
-    
-    private func fetchUserName() {
-        Task {
-            do {
-                // ここでは最初のユーザーを取得（実際は認証済みユーザーのIDで取得）
-                let response: [User] = try await SupabaseManager.shared.client
-                    .from("users")
-                    .select()
-                    .limit(1)
-                    .execute()
-                    .value
-                
-                if let user = response.first {
-                    await MainActor.run {
-                        userName = user.name
-                        isLoading = false
-                    }
-                }
-            } catch {
-                print("ユーザー名の取得に失敗: \(error)")
-                await MainActor.run {
-                    isLoading = false
-                }
-            }
         }
     }
 }

@@ -8,15 +8,20 @@
 import SwiftUI
 
 struct RootView: View {
+    @StateObject private var goalManager = GoalManager()
+    @EnvironmentObject var authManager: AuthManager
+    
     var body: some View {
         TabView {
             HomeView()
+                .environmentObject(authManager)
                 .tabItem {
                     Image(systemName: "house.fill")
                     Text("ホーム")
                 }
             
             TargetView()
+                .environmentObject(goalManager)
                 .tabItem {
                     Image(systemName: "target")
                     Text("目標")
@@ -29,6 +34,7 @@ struct RootView: View {
                 }
             
             UserView()
+                .environmentObject(authManager)
                 .tabItem {
                     Image(systemName: "person.fill")
                     Text("ユーザー")

@@ -8,9 +8,16 @@
 import SwiftUI
 
 struct UserView: View {
-    @State private var userName = "ユーザー"
-    @State private var userEmail = "user@example.com"
+    @EnvironmentObject var authManager: AuthManager
     @State private var showingEditProfile = false
+    
+    private var userName: String {
+        authManager.currentUser?.name ?? "ユーザー"
+    }
+    
+    private var userEmail: String {
+        authManager.currentUser?.email ?? "user@example.com"
+    }
     
     var body: some View {
         NavigationView {
@@ -57,13 +64,35 @@ struct UserView: View {
                     )
                     .padding(.horizontal, 20)
                     
+                    // ログアウトボタン
+                    Button(action: {
+                        AuthManager.shared.signOut()
+                    }) {
+                        HStack {
+                            Image(systemName: "rectangle.portrait.and.arrow.right")
+                                .font(.system(size: 18))
+                            Text("ログアウト")
+                                .font(.body)
+                                .fontWeight(.medium)
+                        }
+                        .foregroundColor(.red)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.red, lineWidth: 1)
+                        )
+                    }
+                    .padding(.horizontal, 20)
+                    
                     Spacer(minLength: 50)
                 }
             }
             .navigationBarTitleDisplayMode(.large)
         }
         .sheet(isPresented: $showingEditProfile) {
-            EditProfileView(userName: $userName, userEmail: $userEmail)
+            EditProfileView()
+                .environmentObject(authManager)
         }
     }
 }
@@ -105,8 +134,9 @@ struct SettingRow: View {
 }
 
 struct EditProfileView: View {
-    @Binding var userName: String
-    @Binding var userEmail: String
+    @EnvironmentObject var authManager: AuthManager
+    @State private var userName: String = ""
+    @State private var userEmail: String = ""
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
@@ -148,7 +178,7 @@ struct EditProfileView: View {
                 Spacer()
                 
                 Button(action: {
-                    dismiss()
+                    saveProfile()
                 }) {
                     Text("保存")
                         .font(.headline)
@@ -172,9 +202,46 @@ struct EditProfileView: View {
                 }
             }
         }
+        .onAppear {
+            // 現在のユーザー情報を初期値として設定
+            userName = authManager.currentUser?.name ?? ""
+            userEmail = authManager.currentUser?.email ?? ""
+        }
+    }
+    
+    private func saveProfile() {
+        // ユーザー情報を更新
+        Task {
+            do {
+                struct UserUpdate: Encodable {
+                    let name: String
+                    let email: String
+                }
+                
+                let updateData = UserUpdate(name: userName, email: userEmail)
+                
+                guard let userId = authManager.currentUser?.id else { return }
+                
+                try await SupabaseManager.shared.client
+                    .from("users")
+                    .update(updateData)
+                    .eq("id", value: userId.uuidString.lowercased())
+                    .execute()
+                
+                // AuthManagerを更新
+                await authManager.fetchCurrentUser()
+                
+                await MainActor.run {
+                    dismiss()
+                }
+            } catch {
+                // エラー処理
+            }
+        }
     }
 }
 
 #Preview {
     UserView()
+        .environmentObject(AuthManager.shared)
 }
