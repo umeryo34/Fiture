@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct TargetView: View {
-    @StateObject private var goalManager = GoalManager()
+    @EnvironmentObject var goalManager: GoalManager
     @State private var selectedTab = 0
     
     var body: some View {

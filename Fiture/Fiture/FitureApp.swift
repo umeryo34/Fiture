@@ -9,9 +9,27 @@ import SwiftUI
 
 @main
 struct FitureApp: App {
+    @StateObject private var authManager = AuthManager.shared
+    
     var body: some Scene {
         WindowGroup {
-            RootView()
+            if authManager.isLoading {
+                // ローディング画面
+                VStack {
+                    Text("読み込み中...")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .padding(.top, 20)
+                }
+            } else if authManager.isAuthenticated {
+                // 認証済み → メイン画面
+                RootView()
+                    .environmentObject(authManager)
+            } else {
+                // 未認証 → 登録画面
+                SignUpView()
+                    .environmentObject(authManager)
+            }
         }
     }
 }
