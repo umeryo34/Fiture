@@ -8,7 +8,6 @@
 import Foundation
 
 struct RunTarget: Codable, Identifiable {
-    let id: Int
     let userId: UUID
     let date: Date
     var target: Double
@@ -18,7 +17,6 @@ struct RunTarget: Codable, Identifiable {
     let updatedAt: Date
     
     enum CodingKeys: String, CodingKey {
-        case id
         case userId = "user_id"
         case date
         case target
@@ -28,9 +26,17 @@ struct RunTarget: Codable, Identifiable {
         case updatedAt = "updated_at"
     }
     
+    // Identifiableプロトコルのために、user_id + date から一意なIDを生成
+    var id: String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        dateFormatter.timeZone = TimeZone.current
+        let dateString = dateFormatter.string(from: date)
+        return "\(userId.uuidString)_\(dateString)"
+    }
+    
     // 通常のイニシャライザー（Previewやテスト用）
-    init(id: Int, userId: UUID, date: Date, target: Double, attempt: Double, isAchieved: Bool, createdAt: Date, updatedAt: Date) {
-        self.id = id
+    init(userId: UUID, date: Date, target: Double, attempt: Double, isAchieved: Bool, createdAt: Date, updatedAt: Date) {
         self.userId = userId
         self.date = date
         self.target = target
@@ -44,7 +50,6 @@ struct RunTarget: Codable, Identifiable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         
-        id = try container.decode(Int.self, forKey: .id)
         userId = try container.decode(UUID.self, forKey: .userId)
         target = try container.decode(Double.self, forKey: .target)
         attempt = try container.decode(Double.self, forKey: .attempt)
