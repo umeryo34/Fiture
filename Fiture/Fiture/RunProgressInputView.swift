@@ -138,7 +138,7 @@ struct RunProgressInputView: View {
 }
 
 #Preview {
-    let sampleTarget = RunTarget(id: 1, userId: UUID(), date: Date(), target: 10.0, attempt: 5.0, isAchieved: false, createdAt: Date(), updatedAt: Date())
+    let sampleTarget = RunTarget(userId: UUID(), date: Date(), target: 10.0, attempt: 5.0, isAchieved: false, createdAt: Date(), updatedAt: Date())
     RunProgressInputView(runTarget: sampleTarget, runTargetManager: RunTargetManager(), userId: UUID())
 }
 
