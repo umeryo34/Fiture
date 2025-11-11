@@ -58,8 +58,10 @@ struct SettingView: View {
     @EnvironmentObject var goalManager: GoalManager
     @EnvironmentObject var authManager: AuthManager
     @StateObject private var runTargetManager = RunTargetManager()
+    @StateObject private var trainingTargetManager = TrainingTargetManager()
     @State private var showingGoalSetting = false
     @State private var showingRunSetting = false
+    @State private var showingTrainingSetting = false
     @State private var selectedItem: SettingItem?
     
     let columns = [
@@ -84,6 +86,8 @@ struct SettingView: View {
                         selectedItem = item
                         if item.type == .run {
                             showingRunSetting = true
+                        } else if item.type == .training {
+                            showingTrainingSetting = true
                         } else {
                             showingGoalSetting = true
                         }
@@ -104,9 +108,15 @@ struct SettingView: View {
                 .environmentObject(authManager)
                 .environmentObject(runTargetManager)
         }
+        .sheet(isPresented: $showingTrainingSetting) {
+            TrainingSettingView()
+                .environmentObject(authManager)
+                .environmentObject(trainingTargetManager)
+        }
         .task {
             if let userId = authManager.currentUser?.id {
                 try? await runTargetManager.fetchRunTarget(userId: userId)
+                try? await trainingTargetManager.fetchTrainingTargets(userId: userId)
             }
         }
     }

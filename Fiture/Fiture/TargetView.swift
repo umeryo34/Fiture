@@ -103,6 +103,7 @@ struct GoalProgressView: View {
     @EnvironmentObject var goalManager: GoalManager
     @EnvironmentObject var authManager: AuthManager
     @StateObject private var runTargetManager = RunTargetManager()
+    @StateObject private var trainingTargetManager = TrainingTargetManager()
     
     var body: some View {
         VStack(spacing: 0) {
@@ -118,13 +119,14 @@ struct GoalProgressView: View {
                 if let userId = authManager.currentUser?.id {
                     Task {
                         try? await runTargetManager.fetchRunTarget(userId: userId, date: newDate)
+                        try? await trainingTargetManager.fetchTrainingTargets(userId: userId, date: newDate)
                     }
                 }
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 16)
             
-            if runTargetManager.runTarget == nil && goalManager.goals.isEmpty {
+            if runTargetManager.runTarget == nil && trainingTargetManager.trainingTargets.isEmpty && goalManager.goals.isEmpty {
                 VStack(spacing: 20) {
                     Image(systemName: "target")
                         .font(.system(size: 60))
@@ -147,6 +149,11 @@ struct GoalProgressView: View {
                             RunProgressCard(runTarget: runTarget, runTargetManager: runTargetManager, userId: authManager.currentUser?.id ?? UUID())
                         }
                         
+                        // 筋トレ目標（Supabase）
+                        ForEach(trainingTargetManager.trainingTargets) { trainingTarget in
+                            TrainingProgressCard(trainingTarget: trainingTarget, trainingTargetManager: trainingTargetManager, userId: authManager.currentUser?.id ?? UUID())
+                        }
+                        
                         // その他の目標（ローカル）
                         ForEach(goalManager.goals) { goal in
                             GoalProgressCard(goal: goal)
@@ -161,6 +168,7 @@ struct GoalProgressView: View {
         .task {
             if let userId = authManager.currentUser?.id {
                 try? await runTargetManager.fetchRunTarget(userId: userId)
+                try? await trainingTargetManager.fetchTrainingTargets(userId: userId)
             }
         }
     }
@@ -250,6 +258,94 @@ struct RunProgressCard: View {
         )
         .sheet(isPresented: $showingProgressInput) {
             RunProgressInputView(runTarget: runTarget, runTargetManager: runTargetManager, userId: userId)
+        }
+    }
+}
+
+// 筋トレ進捗カード（Supabase連携）
+struct TrainingProgressCard: View {
+    let trainingTarget: TrainingTarget
+    let trainingTargetManager: TrainingTargetManager
+    let userId: UUID
+    @State private var showingProgressInput = false
+    
+    var body: some View {
+        VStack(spacing: 15) {
+            HStack(spacing: 15) {
+                // アイコン
+                Image("training")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 50, height: 50)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                
+                // 目標情報
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(trainingTarget.exerciseType)
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                    
+                    Text("目標: \(String(format: "%.0f", trainingTarget.target)) セット")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    
+                    Text("現在: \(String(format: "%.0f", trainingTarget.attempt)) セット")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                // 進捗表示
+                VStack {
+                    Text("\(String(format: "%.0f", trainingTarget.progressPercentage))%")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.red)
+                    
+                    Text("進捗")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            // 進捗バー
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.3))
+                        .frame(height: 8)
+                        .cornerRadius(4)
+                    
+                    Rectangle()
+                        .fill(Color.red)
+                        .frame(width: geometry.size.width * (trainingTarget.progressPercentage / 100.0), height: 8)
+                        .cornerRadius(4)
+                }
+            }
+            .frame(height: 8)
+            
+            // 進捗更新ボタン
+            Button(action: {
+                showingProgressInput = true
+            }) {
+                Text("進捗を更新")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .background(Color.red)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 15)
+                .fill(Color(.systemGray6))
+        )
+        .sheet(isPresented: $showingProgressInput) {
+            TrainingProgressInputView(trainingTarget: trainingTarget, trainingTargetManager: trainingTargetManager, userId: userId)
         }
     }
 }
@@ -365,6 +461,7 @@ struct GoalAchievementView: View {
     @EnvironmentObject var goalManager: GoalManager
     @EnvironmentObject var authManager: AuthManager
     @StateObject private var runTargetManager = RunTargetManager()
+    @StateObject private var trainingTargetManager = TrainingTargetManager()
     
     var body: some View {
         VStack(spacing: 0) {
@@ -380,17 +477,28 @@ struct GoalAchievementView: View {
                 if let userId = authManager.currentUser?.id {
                     Task {
                         try? await runTargetManager.fetchRunTarget(userId: userId, date: newDate)
+                        try? await trainingTargetManager.fetchTrainingTargets(userId: userId, date: newDate)
                     }
                 }
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 16)
             
-            if let runTarget = runTargetManager.runTarget, runTarget.isAchieved {
-                // 達成済みのRun目標を表示
+            let hasAchieved = (runTargetManager.runTarget?.isAchieved ?? false) || trainingTargetManager.trainingTargets.contains(where: { $0.isAchieved })
+            
+            if hasAchieved {
+                // 達成済みの目標を表示
                 ScrollView {
                     VStack(spacing: 15) {
-                        AchievedRunCard(runTarget: runTarget)
+                        // Run目標
+                        if let runTarget = runTargetManager.runTarget, runTarget.isAchieved {
+                            AchievedRunCard(runTarget: runTarget)
+                        }
+                        
+                        // 筋トレ目標
+                        ForEach(trainingTargetManager.trainingTargets.filter { $0.isAchieved }) { trainingTarget in
+                            AchievedTrainingCard(trainingTarget: trainingTarget)
+                        }
                     }
                     .padding(.horizontal, 20)
                 }
@@ -416,6 +524,7 @@ struct GoalAchievementView: View {
         .task {
             if let userId = authManager.currentUser?.id {
                 try? await runTargetManager.fetchRunTarget(userId: userId)
+                try? await trainingTargetManager.fetchTrainingTargets(userId: userId)
             }
         }
     }
@@ -452,6 +561,62 @@ struct AchievedRunCard: View {
                         .foregroundColor(.secondary)
                     
                     Text("達成: \(String(format: "%.1f", runTarget.attempt)) km")
+                        .font(.subheadline)
+                        .foregroundColor(.green)
+                        .fontWeight(.semibold)
+                }
+                
+                Spacer()
+                
+                // トロフィー
+                Image(systemName: "trophy.fill")
+                    .font(.system(size: 40))
+                    .foregroundColor(.yellow)
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 15)
+                .fill(Color.yellow.opacity(0.1))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 15)
+                .stroke(Color.yellow, lineWidth: 2)
+        )
+    }
+}
+
+// 達成済み筋トレカード
+struct AchievedTrainingCard: View {
+    let trainingTarget: TrainingTarget
+    
+    var body: some View {
+        VStack(spacing: 15) {
+            HStack(spacing: 15) {
+                // アイコン
+                Image("training")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 50, height: 50)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                
+                // 達成情報
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack {
+                        Text(trainingTarget.exerciseType)
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                        
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(.green)
+                    }
+                    
+                    Text("目標: \(String(format: "%.0f", trainingTarget.target)) セット")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    
+                    Text("達成: \(String(format: "%.0f", trainingTarget.attempt)) セット")
                         .font(.subheadline)
                         .foregroundColor(.green)
                         .fontWeight(.semibold)
