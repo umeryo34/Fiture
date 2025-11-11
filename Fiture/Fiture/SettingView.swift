@@ -56,7 +56,10 @@ class GoalManager: ObservableObject {
 
 struct SettingView: View {
     @EnvironmentObject var goalManager: GoalManager
+    @EnvironmentObject var authManager: AuthManager
+    @StateObject private var runTargetManager = RunTargetManager()
     @State private var showingGoalSetting = false
+    @State private var showingRunSetting = false
     @State private var selectedItem: SettingItem?
     
     let columns = [
@@ -79,7 +82,11 @@ struct SettingView: View {
                 ForEach(settingItems) { item in
                     SettingCard(item: item) {
                         selectedItem = item
-                        showingGoalSetting = true
+                        if item.type == .run {
+                            showingRunSetting = true
+                        } else {
+                            showingGoalSetting = true
+                        }
                     }
                 }
             }
@@ -90,6 +97,16 @@ struct SettingView: View {
         .sheet(isPresented: $showingGoalSetting) {
             if let item = selectedItem {
                 GoalSettingView(item: item, goalManager: goalManager)
+            }
+        }
+        .sheet(isPresented: $showingRunSetting) {
+            RunSettingView()
+                .environmentObject(authManager)
+                .environmentObject(runTargetManager)
+        }
+        .task {
+            if let userId = authManager.currentUser?.id {
+                try? await runTargetManager.fetchRunTarget(userId: userId)
             }
         }
     }
