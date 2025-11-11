@@ -22,6 +22,7 @@ struct RootView: View {
             
             TargetView()
                 .environmentObject(goalManager)
+                .environmentObject(authManager)
                 .tabItem {
                     Image(systemName: "target")
                     Text("目標")
