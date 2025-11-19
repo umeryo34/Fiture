@@ -15,6 +15,7 @@ struct RootView: View {
         TabView {
             HomeView()
                 .environmentObject(authManager)
+                .environmentObject(goalManager)
                 .tabItem {
                     Image(systemName: "house.fill")
                     Text("ホーム")
