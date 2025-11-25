@@ -60,10 +60,12 @@ struct SettingView: View {
     @StateObject private var runTargetManager = RunTargetManager()
     @StateObject private var trainingTargetManager = TrainingTargetManager()
     @StateObject private var caloriesTargetManager = CaloriesTargetManager()
+    @StateObject private var weightTargetManager = WeightTargetManager()
     @State private var showingGoalSetting = false
     @State private var showingRunSetting = false
     @State private var showingTrainingSetting = false
     @State private var showingCaloriesSetting = false
+    @State private var showingWeightSetting = false
     @State private var selectedItem: SettingItem?
     
     let columns = [
@@ -92,6 +94,8 @@ struct SettingView: View {
                             showingTrainingSetting = true
                         } else if item.type == .calories {
                             showingCaloriesSetting = true
+                        } else if item.type == .weight {
+                            showingWeightSetting = true
                         } else {
                             showingGoalSetting = true
                         }
@@ -122,11 +126,17 @@ struct SettingView: View {
                 .environmentObject(authManager)
                 .environmentObject(caloriesTargetManager)
         }
+        .sheet(isPresented: $showingWeightSetting) {
+            WeightSettingView()
+                .environmentObject(authManager)
+                .environmentObject(weightTargetManager)
+        }
         .task {
             if let userId = authManager.currentUser?.id {
                 try? await runTargetManager.fetchRunTarget(userId: userId)
                 try? await trainingTargetManager.fetchTrainingTargets(userId: userId)
                 try? await caloriesTargetManager.fetchCaloriesTarget(userId: userId)
+                try? await weightTargetManager.fetchWeightEntry(userId: userId)
             }
         }
     }
@@ -201,7 +211,7 @@ struct GoalSettingView: View {
         case .calories:
             return ["kcal", "g"]
         case .weight:
-            return ["kg", "g"]
+            return ["kg"]
         case .water:
             return ["ml", "L", "杯"]
         case .others:

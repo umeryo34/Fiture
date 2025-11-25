@@ -8,22 +8,67 @@
 import SwiftUI
 
 struct ProgressView: View {
+    @EnvironmentObject var authManager: AuthManager
+    @StateObject private var weightTargetManager = WeightTargetManager()
+    
     var body: some View {
-        VStack {
-            Image(systemName: "chart.line.uptrend.xyaxis")
-                .font(.system(size: 80))
-                .foregroundColor(.green)
-                .padding()
-            Text("進捗")
-                .font(.title2)
-                .fontWeight(.semibold)
-            Text("あなたの成長を確認")
-                .font(.subheadline)
-                .foregroundColor(.gray)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                // ヘッダー
+                VStack(spacing: 8) {
+                    Text("進捗")
+                        .font(.title)
+                        .fontWeight(.bold)
+                        .padding(.top, 20)
+                    Text("あなたの成長を確認")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.bottom, 10)
+                
+                // 体重グラフ
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Image("weight")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 30, height: 30)
+                        Text("体重の変化")
+                            .font(.headline)
+                            .fontWeight(.bold)
+                    }
+                    .padding(.horizontal, 20)
+                    
+                    WeightChartView(weightEntries: weightTargetManager.weightEntries)
+                        .padding(.vertical, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 15)
+                                .fill(Color(.systemGray6))
+                        )
+                        .padding(.horizontal, 20)
+                }
+                
+                Spacer()
+            }
+        }
+        .task {
+            // 体重データを取得
+            if let userId = authManager.currentUser?.id {
+                do {
+                    try await weightTargetManager.fetchWeightEntries(userId: userId, days: 30)
+                    print("体重データ取得完了: \(weightTargetManager.weightEntries.count)件")
+                } catch {
+                    print("体重データ取得エラー: \(error)")
+                }
+            } else {
+                print("ユーザーIDが取得できません")
+            }
         }
     }
 }
 
 #Preview {
     ProgressView()
+        .environmentObject(AuthManager.shared)
 }

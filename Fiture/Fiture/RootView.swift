@@ -29,7 +29,8 @@ struct RootView: View {
                     Text("目標")
                 }
             
-            RecordView()
+            ProgressView()
+                .environmentObject(authManager)
                 .tabItem {
                     Image(systemName: "chart.bar.fill")
                     Text("記録")
