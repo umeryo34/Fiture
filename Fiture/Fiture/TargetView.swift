@@ -14,7 +14,7 @@ struct TargetView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            Text("Training")
+            Text("目標を管理")
                 .font(.title)
                 .fontWeight(.bold)
                 .padding(.top, 20)
