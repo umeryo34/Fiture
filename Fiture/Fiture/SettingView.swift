@@ -61,11 +61,13 @@ struct SettingView: View {
     @StateObject private var trainingTargetManager = TrainingTargetManager()
     @StateObject private var caloriesTargetManager = CaloriesTargetManager()
     @StateObject private var weightTargetManager = WeightTargetManager()
+    @StateObject private var waterEntryManager = WaterEntryManager()
     @State private var showingGoalSetting = false
     @State private var showingRunSetting = false
     @State private var showingTrainingSetting = false
     @State private var showingCaloriesSetting = false
     @State private var showingWeightSetting = false
+    @State private var showingWaterSetting = false
     @State private var selectedItem: SettingItem?
     
     let columns = [
@@ -96,6 +98,8 @@ struct SettingView: View {
                             showingCaloriesSetting = true
                         } else if item.type == .weight {
                             showingWeightSetting = true
+                        } else if item.type == .water {
+                            showingWaterSetting = true
                         } else {
                             showingGoalSetting = true
                         }
@@ -131,12 +135,18 @@ struct SettingView: View {
                 .environmentObject(authManager)
                 .environmentObject(weightTargetManager)
         }
+        .sheet(isPresented: $showingWaterSetting) {
+            WaterSettingView()
+                .environmentObject(authManager)
+                .environmentObject(waterEntryManager)
+        }
         .task {
             if let userId = authManager.currentUser?.id {
                 try? await runTargetManager.fetchRunTarget(userId: userId)
                 try? await trainingTargetManager.fetchTrainingTargets(userId: userId)
                 try? await caloriesTargetManager.fetchCaloriesTarget(userId: userId)
                 try? await weightTargetManager.fetchWeightEntry(userId: userId)
+                try? await waterEntryManager.fetchWaterEntries(userId: userId)
             }
         }
     }
