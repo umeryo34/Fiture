@@ -179,7 +179,7 @@ struct RunProgressCard: View {
     let runTarget: RunTarget
     let runTargetManager: RunTargetManager
     let userId: UUID
-    @State private var showingProgressInput = false
+    @State private var showingRunMap = false
     
     var body: some View {
         VStack(spacing: 15) {
@@ -237,18 +237,22 @@ struct RunProgressCard: View {
             }
             .frame(height: 8)
             
-            // 進捗更新ボタン
+            // Run開始ボタン
             Button(action: {
-                showingProgressInput = true
+                showingRunMap = true
             }) {
-                Text("進捗を更新")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                    .background(Color.blue)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                HStack {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 14))
+                    Text("Runを開始")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(Color.blue)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
             }
         }
         .padding()
@@ -256,8 +260,8 @@ struct RunProgressCard: View {
             RoundedRectangle(cornerRadius: 15)
                 .fill(Color(.systemGray6))
         )
-        .sheet(isPresented: $showingProgressInput) {
-            RunProgressInputView(runTarget: runTarget, runTargetManager: runTargetManager, userId: userId)
+        .sheet(isPresented: $showingRunMap) {
+            RunMapView(runTarget: runTarget, runTargetManager: runTargetManager, userId: userId)
         }
     }
 }

@@ -65,4 +65,5 @@ struct RecordView: View {
 
 #Preview {
     RootView()
+        .environmentObject(AuthManager.shared)
 }
