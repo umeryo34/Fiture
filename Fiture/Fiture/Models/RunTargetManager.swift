@@ -84,13 +84,31 @@ class RunTargetManager: ObservableObject {
     
     // Run目標を更新
     func updateRunTarget(userId: UUID, target: Double? = nil, attempt: Double? = nil, date: Date? = nil) async throws {
+        // 既存の目標を取得して、attemptが更新される場合はisAchievedも更新
+        let targetDate = date ?? selectedDate
+        try await fetchRunTarget(userId: userId, date: targetDate)
+        
+        var newAttempt = attempt ?? runTarget?.attempt ?? 0.0
+        var newTarget = target ?? runTarget?.target ?? 0.0
+        let isAchieved = newAttempt >= newTarget
+        
         struct RunTargetUpdate: Encodable {
             let target: Double?
             let attempt: Double?
+            let isAchieved: Bool?
+            
+            enum CodingKeys: String, CodingKey {
+                case target
+                case attempt
+                case isAchieved = "is_achieved"
+            }
         }
         
-        let data = RunTargetUpdate(target: target, attempt: attempt)
-        let targetDate = date ?? selectedDate
+        let data = RunTargetUpdate(
+            target: target,
+            attempt: attempt,
+            isAchieved: attempt != nil ? isAchieved : nil
+        )
         
         // ローカルタイムゾーンで日付を文字列化
         let dateFormatter = DateFormatter()
