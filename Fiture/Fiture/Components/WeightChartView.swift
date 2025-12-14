@@ -152,11 +152,12 @@ struct WeightChartView: View {
                         .frame(height: 200)
                         
                         // 横軸（日付）
-                        GeometryReader { dateGeometry in
-                            HStack(spacing: 0) {
-                                if chartData.count > 1 {
+                        if chartData.count > 1 {
+                            GeometryReader { dateGeometry in
+                                ZStack {
                                     ForEach(visibleDateIndices, id: \.self) { index in
                                         let data = chartData[index]
+                                        // グラフ上の実際のX位置を計算（データポイントの位置と一致させる）
                                         let xPosition = dateGeometry.size.width * CGFloat(index) / CGFloat(chartData.count - 1)
                                         
                                         Text(formatDateShort(data.date))
@@ -164,16 +165,18 @@ struct WeightChartView: View {
                                             .foregroundColor(.primary)
                                             .position(x: xPosition, y: 15)
                                     }
-                                } else if chartData.count == 1 {
-                                    Text(formatDateShort(chartData[0].date))
-                                        .font(.system(size: 11, weight: .medium))
-                                        .foregroundColor(.primary)
-                                        .frame(maxWidth: .infinity)
                                 }
                             }
+                            .frame(height: 30)
+                            .padding(.top, 8)
+                        } else if chartData.count == 1 {
+                            Text(formatDateShort(chartData[0].date))
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundColor(.primary)
+                                .frame(height: 30)
+                                .frame(maxWidth: .infinity)
+                                .padding(.top, 8)
                         }
-                        .frame(height: 30)
-                        .padding(.top, 8)
                     }
                 }
                 .padding(.horizontal, 20)
