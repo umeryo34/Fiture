@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Combine
 
 struct HomeView: View {
     @EnvironmentObject var authManager: AuthManager
@@ -78,34 +79,35 @@ struct HomeView: View {
             .padding(.top, 12)
             .padding(.bottom, 8)
             
-         
-
-            // カロリー画像表示（中央）
-            VStack(spacing: 16) {
-                CaloriesImageDisplayView(
-                    totalCalories: caloriesTargetManager.totalCalories,
-                    targetCalories: targetCalories
-                )
-                
-                // 目標設定ボタン
-                if caloriesTargetManager.caloriesTarget == nil {
-                    Button(action: {
-                        showingTargetSetting = true
-                    }) {
-                        HStack {
-                            Image(systemName: "target")
-                                .font(.system(size: 16))
-                            Text("カロリー目標を設定")
-                                .font(.headline)
+            // カロリー情報と進捗バー
+            if let target = targetCalories, target > 0 {
+                VStack(spacing: 16) {
+                    VStack(spacing: 8) {
+                        Text("\(String(format: "%.0f", caloriesTargetManager.totalCalories)) / \(String(format: "%.0f", target)) kcal")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.primary)
+                        
+                        // 進捗バー
+                        GeometryReader { geometry in
+                            ZStack(alignment: .leading) {
+                                Rectangle()
+                                    .fill(Color.gray.opacity(0.3))
+                                    .frame(height: 8)
+                                    .cornerRadius(4)
+                                
+                                Rectangle()
+                                    .fill(progressColor)
+                                    .frame(width: min(geometry.size.width, geometry.size.width * CGFloat(min(caloriesTargetManager.totalCalories / target, 1.0))), height: 8)
+                                    .cornerRadius(4)
+                            }
                         }
-                        .foregroundColor(.white)
+                        .frame(height: 8)
                         .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.black)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
                     .padding(.horizontal, 20)
-                } else {
+                    
+                    // 目標設定ボタン
                     Button(action: {
                         showingTargetSetting = true
                     }) {
@@ -122,9 +124,35 @@ struct HomeView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                 }
+                .padding(.bottom, 10)
+            } else {
+                // 目標が設定されていない場合
+                VStack(spacing: 16) {
+                    Text("\(String(format: "%.0f", caloriesTargetManager.totalCalories)) kcal")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.primary)
+                    
+                    Button(action: {
+                        showingTargetSetting = true
+                    }) {
+                        HStack {
+                            Image(systemName: "target")
+                                .font(.system(size: 16))
+                            Text("カロリー目標を設定")
+                                .font(.headline)
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.black)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .padding(.horizontal, 20)
+                }
+                .padding(.bottom, 10)
             }
-            .padding(.vertical, 20)
-
+            
             Spacer()
 
             // 今日の食事（下部）
@@ -166,9 +194,15 @@ struct HomeView: View {
                         VStack(spacing: 8) {
                             ForEach(caloriesTargetManager.caloriesEntries) { entry in
                                 HStack {
-                                    Text(entry.foodName)
-                                        .font(.subheadline)
-                                        .foregroundColor(.primary)
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(entry.foodName)
+                                            .font(.subheadline)
+                                            .foregroundColor(.primary)
+                                        
+                                        Text(formatTime(entry.createdAt))
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
                                     
                                     Spacer()
                                     
@@ -187,7 +221,6 @@ struct HomeView: View {
                         }
                         .padding(.horizontal, 20)
                     }
-                    .frame(maxHeight: 200)
                     
                     // 合計カロリー
                     HStack {
@@ -215,6 +248,7 @@ struct HomeView: View {
                 }
             }
             .padding(.bottom, 20)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
         .sheet(isPresented: $showingTargetSetting) {
             CaloriesTargetSettingView(
@@ -224,13 +258,80 @@ struct HomeView: View {
             .environmentObject(authManager)
         }
         .task {
-            // 今日の食事と目標を取得
-            if let userId = authManager.currentUser?.id {
-                async let fetchEntries = caloriesTargetManager.fetchCaloriesEntries(userId: userId)
-                async let fetchTarget = caloriesTargetManager.fetchCaloriesTarget(userId: userId)
-                try? await fetchEntries
-                try? await fetchTarget
+            // 初回表示時にデータを取得
+            await fetchCaloriesData()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .caloriesDataDidUpdate)) { _ in
+            // カロリーデータが更新された時に再取得
+            print("HomeView: カロリーデータ更新通知を受信")
+            Task {
+                await fetchCaloriesData()
             }
+        }
+    }
+    
+    // 時間をフォーマットする関数
+    private func formatTime(_ date: Date) -> String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "HH:mm"
+        dateFormatter.timeZone = TimeZone.current
+        return dateFormatter.string(from: date)
+    }
+    
+    // 進捗バーの色を決定（滑らかに変化）
+    private var progressColor: Color {
+        guard let target = targetCalories, target > 0 else {
+            return .green
+        }
+        
+        let percentage = (caloriesTargetManager.totalCalories / target) * 100
+        
+        // 100%以上は赤固定
+        if percentage >= 100 {
+            return .red
+        }
+        
+        // 0〜80%：緑 → 黄（滑らかに）
+        if percentage <= 80 {
+            let progress = percentage / 80.0 // 0.0 〜 1.0
+            // 緑(0, 255, 0) → 黄(255, 255, 0)
+            let red = progress * 255
+            let green: Double = 255
+            let blue: Double = 0
+            return Color(red: red / 255.0, green: green / 255.0, blue: blue / 255.0)
+        }
+        
+        // 80〜100%：黄 → オレンジ → 赤（滑らかに）
+        // 80% = 黄(255, 255, 0)
+        // 90% = オレンジ(255, 165, 0)
+        // 100% = 赤(255, 0, 0)
+        let progress = (percentage - 80) / 20.0 // 0.0 〜 1.0
+        
+        if progress <= 0.5 {
+            // 80〜90%：黄 → オレンジ
+            let localProgress = progress * 2.0 // 0.0 〜 1.0
+            let red: Double = 255
+            let green = 255 - (255 - 165) * localProgress // 255 → 165
+            let blue: Double = 0
+            return Color(red: red / 255.0, green: green / 255.0, blue: blue / 255.0)
+        } else {
+            // 90〜100%：オレンジ → 赤
+            let localProgress = (progress - 0.5) * 2.0 // 0.0 〜 1.0
+            let red: Double = 255
+            let green = 165 - 165 * localProgress // 165 → 0
+            let blue: Double = 0
+            return Color(red: red / 255.0, green: green / 255.0, blue: blue / 255.0)
+        }
+    }
+    
+    // カロリーデータを取得する関数
+    private func fetchCaloriesData() async {
+        if let userId = authManager.currentUser?.id {
+            async let fetchEntries = caloriesTargetManager.fetchCaloriesEntries(userId: userId)
+            async let fetchTarget = caloriesTargetManager.fetchCaloriesTarget(userId: userId)
+            try? await fetchEntries
+            try? await fetchTarget
+            print("HomeView: カロリーデータ再取得完了 - totalCalories: \(caloriesTargetManager.totalCalories), target: \(caloriesTargetManager.caloriesTarget?.target ?? 0)")
         }
     }
 }

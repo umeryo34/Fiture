@@ -35,10 +35,10 @@ struct WaterSettingView: View {
                 }
                 .padding(.top, 20)
                 
-                // 今日の水量表示
+                // 今日の合計水量表示
                 if let waterEntry = waterEntryManager.waterEntries.first {
                     VStack(spacing: 10) {
-                        Text("今日の水量")
+                        Text("今日の合計水量")
                             .font(.headline)
                             .foregroundColor(.primary)
                         
@@ -57,7 +57,7 @@ struct WaterSettingView: View {
                 // 水入力フォーム
                 VStack(spacing: 20) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("水の量")
+                        Text("今回飲んだ量")
                             .font(.headline)
                             .foregroundColor(.primary)
                         
@@ -108,7 +108,7 @@ struct WaterSettingView: View {
                             .frame(maxWidth: .infinity)
                             .frame(height: 50)
                     } else {
-                        Text(waterEntryManager.waterEntries.isEmpty ? "水を記録" : "水を更新")
+                        Text("水を追加")
                             .font(.headline)
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -151,10 +151,8 @@ struct WaterSettingView: View {
             // 既存の水の記録を取得
             if let userId = authManager.currentUser?.id {
                 try? await waterEntryManager.fetchWaterEntries(userId: userId)
-                // 既存の記録があれば値をセット
-                if let waterEntry = waterEntryManager.waterEntries.first {
-                    mlValue = String(format: "%.0f", waterEntry.ml)
-                }
+                // 入力フィールドは常に空にする（加算方式のため）
+                mlValue = ""
             }
         }
     }
@@ -190,20 +188,20 @@ struct WaterSettingView: View {
         
         Task {
             do {
+                // 既存の記録があれば加算、なければ新規作成
+                let existingMl = waterEntryManager.waterEntries.first?.ml ?? 0
+                let newTotalMl = existingMl + ml
+                
                 try await waterEntryManager.createOrUpdateWaterEntry(
                     userId: userId,
-                    ml: ml,
+                    ml: newTotalMl,
                     date: waterEntryManager.selectedDate
                 )
                 
                 await MainActor.run {
                     isLoading = false
-                    // 既存の記録があれば値をセット
-                    if let waterEntry = waterEntryManager.waterEntries.first {
-                        mlValue = String(format: "%.0f", waterEntry.ml)
-                    } else {
-                        mlValue = ""
-                    }
+                    // 入力フィールドをクリア（加算方式のため）
+                    mlValue = ""
                 }
             } catch {
                 await MainActor.run {
