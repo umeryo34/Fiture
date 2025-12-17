@@ -8,6 +8,10 @@
 import Foundation
 import Supabase
 
+extension Notification.Name {
+    static let caloriesDataDidUpdate = Notification.Name("caloriesDataDidUpdate")
+}
+
 class CaloriesTargetManager: ObservableObject {
     @Published var caloriesEntries: [CaloriesEntry] = []
     @Published var caloriesTarget: CaloriesTarget?
@@ -77,6 +81,11 @@ class CaloriesTargetManager: ObservableObject {
         
         // 再取得
         try await fetchCaloriesEntries(userId: userId, date: date)
+        
+        // データ更新を通知
+        await MainActor.run {
+            NotificationCenter.default.post(name: .caloriesDataDidUpdate, object: nil)
+        }
     }
     
     // 食事を削除
@@ -90,6 +99,12 @@ class CaloriesTargetManager: ObservableObject {
         // 再取得
         let targetDate = date ?? selectedDate
         try await fetchCaloriesEntries(userId: userId, date: targetDate)
+        
+        // データ更新を通知
+        await MainActor.run {
+            print("CaloriesTargetManager: カロリーデータ更新通知を送信 (deleteCaloriesEntry)")
+            NotificationCenter.default.post(name: .caloriesDataDidUpdate, object: nil)
+        }
     }
     
     // カロリー目標を取得
