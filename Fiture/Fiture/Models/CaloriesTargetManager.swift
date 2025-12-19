@@ -222,5 +222,50 @@ class CaloriesTargetManager: ObservableObject {
             caloriesTarget = nil
         }
     }
+    
+    // 過去のカロリーデータを取得（日付ごとの合計）
+    func fetchCaloriesHistory(userId: UUID, days: Int = 30) async throws -> [(date: Date, totalCalories: Double)] {
+        let userIdString = userId.uuidString.lowercased()
+        
+        // 開始日を計算
+        let endDate = Date()
+        let startDate = Calendar.current.date(byAdding: .day, value: -days, to: endDate) ?? endDate
+        
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd"
+        dateFormatter.timeZone = TimeZone.current
+        let startDateString = dateFormatter.string(from: startDate)
+        let endDateString = dateFormatter.string(from: endDate)
+        
+        // 指定期間のカロリー記録を取得
+        let response: [CaloriesEntry] = try await SupabaseManager.shared.client
+            .from("calories_entries")
+            .select()
+            .eq("user_id", value: userIdString)
+            .gte("date", value: startDateString)
+            .lte("date", value: endDateString)
+            .order("date", ascending: true)
+            .execute()
+            .value
+        
+        // 日付ごとにグループ化して合計を計算
+        var dailyTotals: [String: Double] = [:]
+        for entry in response {
+            let dateString = dateFormatter.string(from: entry.date)
+            dailyTotals[dateString, default: 0] += entry.calories
+        }
+        
+        // 日付順にソートして返す
+        var result: [(date: Date, totalCalories: Double)] = []
+        var currentDate = startDate
+        while currentDate <= endDate {
+            let dateString = dateFormatter.string(from: currentDate)
+            let total = dailyTotals[dateString] ?? 0
+            result.append((date: currentDate, totalCalories: total))
+            currentDate = Calendar.current.date(byAdding: .day, value: 1, to: currentDate) ?? currentDate
+        }
+        
+        return result
+    }
 }
 
