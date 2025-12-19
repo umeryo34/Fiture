@@ -79,6 +79,9 @@ struct HomeView: View {
             .padding(.top, 12)
             .padding(.bottom, 8)
             
+            Spacer()
+                .frame(height: 20)
+            
             // カロリー情報と進捗バー
             if let target = targetCalories, target > 0 {
                 VStack(spacing: 16) {
@@ -164,13 +167,14 @@ struct HomeView: View {
                     .padding(.horizontal, 20)
                 
                 if caloriesTargetManager.caloriesEntries.isEmpty {
-                    // 食事がない場合
-                    HStack {
+                    // 食事がない場合（中央配置）
+                    Spacer()
+                    VStack(spacing: 12) {
                         Image(systemName: "fork.knife")
-                            .font(.system(size: 40))
+                            .font(.system(size: 50))
                             .foregroundColor(.gray)
                         
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(spacing: 4) {
                             Text("まだ食事を記録していません")
                                 .font(.subheadline)
                                 .foregroundColor(.gray)
@@ -179,15 +183,9 @@ struct HomeView: View {
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
-                        
-                        Spacer()
                     }
-                    .padding()
-                    .background(
-                        RoundedRectangle(cornerRadius: 15)
-                            .fill(Color(.systemGray6))
-                    )
-                    .padding(.horizontal, 20)
+                    .frame(maxWidth: .infinity)
+                    Spacer()
                 } else {
                     // 食事リスト
                     ScrollView {

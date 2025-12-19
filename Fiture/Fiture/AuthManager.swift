@@ -22,8 +22,28 @@ class AuthManager: ObservableObject {
     func checkAuthStatus() {
         Task {
             await MainActor.run {
-                isAuthenticated = false
-                isLoading = false
+                isLoading = true
+            }
+            
+            // セッションをチェック
+            do {
+                let session = try await SupabaseManager.shared.client.auth.session
+                
+                // セッションが存在する場合、ユーザー情報を取得
+                if session.user.id != nil {
+                    await fetchCurrentUser()
+                } else {
+                    await MainActor.run {
+                        isAuthenticated = false
+                        isLoading = false
+                    }
+                }
+            } catch {
+                // セッションが存在しない、または無効な場合
+                await MainActor.run {
+                    isAuthenticated = false
+                    isLoading = false
+                }
             }
         }
     }
@@ -44,15 +64,20 @@ class AuthManager: ObservableObject {
                 await MainActor.run {
                     currentUser = user
                     isAuthenticated = true
+                    isLoading = false
                 }
             } else {
                 await MainActor.run {
+                    currentUser = nil
                     isAuthenticated = false
+                    isLoading = false
                 }
             }
         } catch {
             await MainActor.run {
+                currentUser = nil
                 isAuthenticated = false
+                isLoading = false
             }
         }
     }

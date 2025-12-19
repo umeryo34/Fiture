@@ -19,21 +19,21 @@ struct LoginView: View {
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(spacing: 30) {
+                VStack(spacing: 20) {
                     // ロゴ・タイトルエリア
-                    VStack(spacing: 12) {
+                    VStack(spacing: 8) {
                         Image(systemName: "flame.fill")
-                            .font(.system(size: 80))
+                            .font(.system(size: 60))
                             .foregroundColor(.red)
                         
                         Text("おかえりなさい")
-                            .font(.largeTitle)
+                            .font(.title)
                             .fontWeight(.bold)
                     }
-                    .padding(.top, 60)
+                    .padding(.top, 20)
                     
                     // 入力フォーム
-                    VStack(spacing: 20) {
+                    VStack(spacing: 15) {
                         // メールアドレス
                         VStack(alignment: .leading, spacing: 8) {
                             Text("メールアドレス")
@@ -103,9 +103,9 @@ struct LoginView: View {
                         .fontWeight(.semibold)
                         .foregroundColor(.red)
                     }
-                    .padding(.top, 10)
+                    .padding(.top, 5)
                 }
-                .padding(.bottom, 40)
+                .padding(.bottom, 20)
             }
             .navigationBarHidden(true)
         }
