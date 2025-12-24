@@ -12,6 +12,7 @@ struct HomeView: View {
     @EnvironmentObject var authManager: AuthManager
     @StateObject private var caloriesTargetManager = CaloriesTargetManager()
     @State private var showingTargetSetting = false
+    @State private var showingCaloriesInput = false
     
     private var userName: String {
         authManager.currentUser?.name ?? "ユーザー"
@@ -110,21 +111,41 @@ struct HomeView: View {
                     }
                     .padding(.horizontal, 20)
                     
-                    // 目標設定ボタン
-                    Button(action: {
-                        showingTargetSetting = true
-                    }) {
-                        HStack {
-                            Image(systemName: "pencil")
-                                .font(.system(size: 14))
-                            Text("目標を変更")
-                                .font(.subheadline)
+                    // ボタン群
+                    HStack(spacing: 12) {
+                        // 食事追加ボタン
+                        Button(action: {
+                            showingCaloriesInput = true
+                        }) {
+                            HStack {
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.system(size: 14))
+                                Text("食事を追加")
+                                    .font(.subheadline)
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Color.green)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
                         }
-                        .foregroundColor(.black)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.gray.opacity(0.1))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        
+                        // 目標設定ボタン
+                        Button(action: {
+                            showingTargetSetting = true
+                        }) {
+                            HStack {
+                                Image(systemName: "pencil")
+                                    .font(.system(size: 14))
+                                Text("目標を変更")
+                                    .font(.subheadline)
+                            }
+                            .foregroundColor(.black)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Color.gray.opacity(0.1))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
                     }
                 }
                 .padding(.bottom, 10)
@@ -136,22 +157,43 @@ struct HomeView: View {
                         .fontWeight(.bold)
                         .foregroundColor(.primary)
                     
-                    Button(action: {
-                        showingTargetSetting = true
-                    }) {
-                        HStack {
-                            Image(systemName: "target")
-                                .font(.system(size: 16))
-                            Text("カロリー目標を設定")
-                                .font(.headline)
+                    VStack(spacing: 12) {
+                        // 食事追加ボタン
+                        Button(action: {
+                            showingCaloriesInput = true
+                        }) {
+                            HStack {
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.system(size: 16))
+                                Text("食事を追加")
+                                    .font(.headline)
+                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.green)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.black)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .padding(.horizontal, 20)
+                        
+                        // 目標設定ボタン
+                        Button(action: {
+                            showingTargetSetting = true
+                        }) {
+                            HStack {
+                                Image(systemName: "target")
+                                    .font(.system(size: 16))
+                                Text("カロリー目標を設定")
+                                    .font(.headline)
+                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.black)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                        .padding(.horizontal, 20)
                     }
-                    .padding(.horizontal, 20)
                 }
                 .padding(.bottom, 10)
             }
@@ -254,6 +296,15 @@ struct HomeView: View {
                 initialTarget: targetCalories
             )
             .environmentObject(authManager)
+        }
+        .sheet(isPresented: $showingCaloriesInput) {
+            if let userId = authManager.currentUser?.id {
+                CaloriesProgressInputView(
+                    caloriesTargetManager: caloriesTargetManager,
+                    userId: userId,
+                    date: caloriesTargetManager.selectedDate
+                )
+            }
         }
         .task {
             // 初回表示時にデータを取得
