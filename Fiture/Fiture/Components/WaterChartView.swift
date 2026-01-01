@@ -59,7 +59,9 @@ struct WaterChartView: View {
                 .chartXAxis {
                     AxisMarks(values: .stride(by: .day, count: max(1, chartData.count / 7))) { value in
                         if let date = value.as(Date.self) {
-                            AxisValueLabel(format: .dateTime.month().day(), centered: true)
+                            AxisValueLabel {
+                                Text(formatDateShort(date))
+                            }
                         }
                         AxisGridLine()
                         AxisTick()
@@ -113,6 +115,14 @@ struct WaterChartView: View {
                 .padding(.horizontal, 20)
             }
         }
+    }
+    
+    // 日付を短い形式でフォーマット（M/d）
+    private func formatDateShort(_ date: Date) -> String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "M/d"
+        dateFormatter.timeZone = TimeZone.current
+        return dateFormatter.string(from: date)
     }
 }
 
