@@ -1,5 +1,5 @@
 //
-//  CaloriesChartView.swift
+//  WaterChartView.swift
 //  Fiture
 //
 //  Created by 梅澤遼 on 2025/11/11.
@@ -8,22 +8,22 @@
 import SwiftUI
 import Charts
 
-struct CaloriesChartData: Identifiable {
+struct WaterChartData: Identifiable {
     let id = UUID()
     let date: Date
-    let totalCalories: Double
+    let totalMl: Double
 }
 
-struct CaloriesChartView: View {
-    let chartData: [(date: Date, totalCalories: Double)]
+struct WaterChartView: View {
+    let chartData: [(date: Date, totalMl: Double)]
     
-    private var caloriesData: [CaloriesChartData] {
-        chartData.map { CaloriesChartData(date: $0.date, totalCalories: $0.totalCalories) }
+    private var waterData: [WaterChartData] {
+        chartData.map { WaterChartData(date: $0.date, totalMl: $0.totalMl) }
     }
     
-    private var maxCalories: Double {
-        guard !caloriesData.isEmpty else { return 2000 }
-        return max(caloriesData.map { $0.totalCalories }.max() ?? 2000, 2000)
+    private var maxMl: Double {
+        guard !waterData.isEmpty else { return 2000 }
+        return max(waterData.map { $0.totalMl }.max() ?? 2000, 2000)
     }
     
     var body: some View {
@@ -32,10 +32,10 @@ struct CaloriesChartView: View {
                 Image(systemName: "chart.bar.fill")
                     .font(.system(size: 50))
                     .foregroundColor(.gray)
-                Text("カロリーデータがありません")
+                Text("水のデータがありません")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
-                Text("食事を記録するとグラフが表示されます")
+                Text("水を記録するとグラフが表示されます")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -44,15 +44,15 @@ struct CaloriesChartView: View {
         } else {
             VStack(alignment: .leading, spacing: 12) {
                 // グラフ
-                Chart(caloriesData) { data in
+                Chart(waterData) { data in
                     BarMark(
                         x: .value("日付", data.date, unit: .day),
-                        y: .value("カロリー", data.totalCalories)
+                        y: .value("水量", data.totalMl)
                     )
                     .foregroundStyle(
-                        data.totalCalories >= 2000 ? Color.red :
-                        data.totalCalories >= 1500 ? Color.orange :
-                        Color.green
+                        data.totalMl >= 2000 ? Color.cyan :
+                        data.totalMl >= 1500 ? Color.blue :
+                        Color.gray
                     )
                     .cornerRadius(4)
                 }
@@ -81,27 +81,27 @@ struct CaloriesChartView: View {
                 HStack(spacing: 20) {
                     HStack(spacing: 4) {
                         Rectangle()
-                            .fill(Color.green)
+                            .fill(Color.gray)
                             .frame(width: 12, height: 12)
-                        Text("1500kcal未満")
+                        Text("1500ml未満")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                     
                     HStack(spacing: 4) {
                         Rectangle()
-                            .fill(Color.orange)
+                            .fill(Color.blue)
                             .frame(width: 12, height: 12)
-                        Text("1500-2000kcal")
+                        Text("1500-2000ml")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                     
                     HStack(spacing: 4) {
                         Rectangle()
-                            .fill(Color.red)
+                            .fill(Color.cyan)
                             .frame(width: 12, height: 12)
-                        Text("2000kcal以上")
+                        Text("2000ml以上")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -127,10 +127,10 @@ struct CaloriesChartView: View {
 }
 
 #Preview {
-    CaloriesChartView(chartData: [
-        (date: Date(), totalCalories: 1800),
-        (date: Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date(), totalCalories: 2200),
-        (date: Calendar.current.date(byAdding: .day, value: -2, to: Date()) ?? Date(), totalCalories: 1500)
+    WaterChartView(chartData: [
+        (date: Date(), totalMl: 1800),
+        (date: Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date(), totalMl: 2200),
+        (date: Calendar.current.date(byAdding: .day, value: -2, to: Date()) ?? Date(), totalMl: 1500)
     ])
     .padding()
 }
