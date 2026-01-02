@@ -150,50 +150,30 @@ struct HomeView: View {
                 }
                 .padding(.bottom, 10)
             } else {
-                // 目標が設定されていない場合
+                // 目標が設定されていない場合（食事追加ボタンのみ）
                 VStack(spacing: 16) {
                     Text("\(String(format: "%.0f", caloriesTargetManager.totalCalories)) kcal")
                         .font(.title2)
                         .fontWeight(.bold)
                         .foregroundColor(.primary)
                     
-                    VStack(spacing: 12) {
-                        // 食事追加ボタン
-                        Button(action: {
-                            showingCaloriesInput = true
-                        }) {
-                            HStack {
-                                Image(systemName: "plus.circle.fill")
-                                    .font(.system(size: 16))
-                                Text("食事を追加")
-                                    .font(.headline)
-                            }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.green)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    // 食事追加ボタン
+                    Button(action: {
+                        showingCaloriesInput = true
+                    }) {
+                        HStack {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 16))
+                            Text("食事を追加")
+                                .font(.headline)
                         }
-                        .padding(.horizontal, 20)
-                        
-                        // 目標設定ボタン
-                        Button(action: {
-                            showingTargetSetting = true
-                        }) {
-                            HStack {
-                                Image(systemName: "target")
-                                    .font(.system(size: 16))
-                                Text("カロリー目標を設定")
-                                    .font(.headline)
-                            }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.black)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                        }
-                        .padding(.horizontal, 20)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.green)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
+                    .padding(.horizontal, 20)
                 }
                 .padding(.bottom, 10)
             }
