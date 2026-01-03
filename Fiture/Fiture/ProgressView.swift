@@ -20,16 +20,35 @@ struct ProgressView: View {
             VStack(alignment: .leading, spacing: 20) {
                 // ヘッダー
                 VStack(spacing: 8) {
-                    Text("進捗")
+                    Text("グラフで分析")
                         .font(.title)
                         .fontWeight(.bold)
                         .padding(.top, 20)
-                    Text("あなたの成長を確認")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.bottom, 10)
+                
+                // 体重グラフ
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Image("weight")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 30, height: 30)
+                        Text("体重の変化")
+                            .font(.headline)
+                            .fontWeight(.bold)
+                    }
+                    .padding(.horizontal, 20)
+                    
+                    WeightChartView(weightEntries: weightTargetManager.weightEntries)
+                        .padding(.vertical, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 15)
+                                .fill(Color(.systemGray6))
+                        )
+                        .padding(.horizontal, 20)
+                }
                 
                 // カロリーグラフ
                 VStack(alignment: .leading, spacing: 12) {
@@ -67,28 +86,6 @@ struct ProgressView: View {
                     .padding(.horizontal, 20)
                     
                     WaterChartView(chartData: waterHistory)
-                        .padding(.vertical, 10)
-                        .background(
-                            RoundedRectangle(cornerRadius: 15)
-                                .fill(Color(.systemGray6))
-                        )
-                        .padding(.horizontal, 20)
-                }
-                
-                // 体重グラフ
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Image("weight")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 30, height: 30)
-                        Text("体重の変化")
-                            .font(.headline)
-                            .fontWeight(.bold)
-                    }
-                    .padding(.horizontal, 20)
-                    
-                    WeightChartView(weightEntries: weightTargetManager.weightEntries)
                         .padding(.vertical, 10)
                         .background(
                             RoundedRectangle(cornerRadius: 15)
