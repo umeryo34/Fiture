@@ -13,6 +13,8 @@ struct HomeView: View {
     @StateObject private var caloriesTargetManager = CaloriesTargetManager()
     @State private var showingTargetSetting = false
     @State private var showingCaloriesInput = false
+    @State private var showingDatePicker = false
+    @State private var selectedDate: Date = Date()
     
     private var userName: String {
         authManager.currentUser?.name ?? "ユーザー"
@@ -50,7 +52,9 @@ struct HomeView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Button(action: {}) {
+                Button(action: {
+                    showingDatePicker = true
+                }) {
                     Image(systemName: "calendar")
                         .font(.system(size: 22))
                         .foregroundColor(.primary)
@@ -282,19 +286,28 @@ struct HomeView: View {
                 CaloriesProgressInputView(
                     caloriesTargetManager: caloriesTargetManager,
                     userId: userId,
-                    date: caloriesTargetManager.selectedDate
+                    date: selectedDate
                 )
+            }
+        }
+        .sheet(isPresented: $showingDatePicker) {
+            DatePickerSheet(selectedDate: $selectedDate) { newDate in
+                selectedDate = newDate
+                Task {
+                    await fetchCaloriesDataForDate(newDate)
+                }
             }
         }
         .task {
             // 初回表示時にデータを取得
+            selectedDate = Date()
             await fetchCaloriesData()
         }
         .onReceive(NotificationCenter.default.publisher(for: .caloriesDataDidUpdate)) { _ in
-            // カロリーデータが更新された時に再取得
+            // カロリーデータが更新された時に再取得（選択された日付のデータ）
             print("HomeView: カロリーデータ更新通知を受信")
             Task {
-                await fetchCaloriesData()
+                await fetchCaloriesDataForDate(selectedDate)
             }
         }
     }
@@ -303,6 +316,15 @@ struct HomeView: View {
     private func formatTime(_ date: Date) -> String {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "HH:mm"
+        dateFormatter.timeZone = TimeZone.current
+        return dateFormatter.string(from: date)
+    }
+    
+    // 選択された日付をフォーマットする関数
+    private func formatSelectedDate(_ date: Date) -> String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "M月d日 (E)"
+        dateFormatter.locale = Locale(identifier: "ja_JP")
         dateFormatter.timeZone = TimeZone.current
         return dateFormatter.string(from: date)
     }
@@ -355,12 +377,17 @@ struct HomeView: View {
     
     // カロリーデータを取得する関数
     private func fetchCaloriesData() async {
+        await fetchCaloriesDataForDate(selectedDate)
+    }
+    
+    // 指定日付のカロリーデータを取得する関数
+    private func fetchCaloriesDataForDate(_ date: Date) async {
         if let userId = authManager.currentUser?.id {
-            async let fetchEntries = caloriesTargetManager.fetchCaloriesEntries(userId: userId)
-            async let fetchTarget = caloriesTargetManager.fetchCaloriesTarget(userId: userId)
+            async let fetchEntries = caloriesTargetManager.fetchCaloriesEntries(userId: userId, date: date)
+            async let fetchTarget = caloriesTargetManager.fetchCaloriesTarget(userId: userId, date: date)
             try? await fetchEntries
             try? await fetchTarget
-            print("HomeView: カロリーデータ再取得完了 - totalCalories: \(caloriesTargetManager.totalCalories), target: \(caloriesTargetManager.caloriesTarget?.target ?? 0)")
+            print("HomeView: カロリーデータ再取得完了 - totalCalories: \(caloriesTargetManager.totalCalories), target: \(caloriesTargetManager.caloriesTarget?.target ?? 0), date: \(date)")
         }
     }
 }
