@@ -92,8 +92,7 @@ struct HomeView: View {
                 VStack(spacing: 16) {
                     VStack(spacing: 8) {
                         Text("\(String(format: "%.0f", caloriesTargetManager.totalCalories)) / \(String(format: "%.0f", target)) kcal")
-                            .font(.title2)
-                            .fontWeight(.bold)
+                            .font(.system(size: 32, weight: .bold))
                             .foregroundColor(.primary)
                         
                         // 進捗バー
@@ -157,8 +156,7 @@ struct HomeView: View {
                 // 目標が設定されていない場合
                 VStack(spacing: 16) {
                     Text("\(String(format: "%.0f", caloriesTargetManager.totalCalories)) kcal")
-                        .font(.title2)
-                        .fontWeight(.bold)
+                        .font(.system(size: 32, weight: .bold))
                         .foregroundColor(.primary)
                     
                     VStack(spacing: 12) {
