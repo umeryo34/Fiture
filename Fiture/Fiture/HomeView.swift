@@ -14,6 +14,7 @@ struct HomeView: View {
     @State private var showingTargetSetting = false
     @State private var showingCaloriesInput = false
     @State private var showingDatePicker = false
+    @State private var showingSearch = false
     @State private var selectedDate: Date = Date()
     
     private var userName: String {
@@ -67,7 +68,9 @@ struct HomeView: View {
                     .lineLimit(1)
                 Spacer()
                 
-                Button(action: {}) {
+                Button(action: {
+                    showingSearch = true
+                }) {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: 22))
                         .foregroundColor(.primary)
@@ -315,6 +318,11 @@ struct HomeView: View {
                     await fetchCaloriesDataForDate(newDate)
                 }
             }
+        }
+        .sheet(isPresented: $showingSearch) {
+            CaloriesSearchView()
+                .environmentObject(authManager)
+                .environmentObject(caloriesTargetManager)
         }
         .task {
             // 初回表示時にデータを取得
