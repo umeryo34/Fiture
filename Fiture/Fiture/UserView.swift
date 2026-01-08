@@ -11,6 +11,7 @@ import PhotosUI
 struct UserView: View {
     @EnvironmentObject var authManager: AuthManager
     @State private var showingEditProfile = false
+    @State private var showingThemeSetting = false
     
     private var userName: String {
         authManager.currentUser?.name ?? "ユーザー"
@@ -66,6 +67,7 @@ struct UserView: View {
                         }
                         
                         SettingRow(icon: "paintbrush.fill", title: "テーマ", color: .purple) {
+                            showingThemeSetting = true
                         }
                         
                         SettingRow(icon: "info.circle", title: "アプリ情報", color: .gray) {
@@ -109,6 +111,9 @@ struct UserView: View {
         .sheet(isPresented: $showingEditProfile) {
             EditProfileView()
                 .environmentObject(authManager)
+        }
+        .sheet(isPresented: $showingThemeSetting) {
+            ThemeSettingView()
         }
     }
 }
