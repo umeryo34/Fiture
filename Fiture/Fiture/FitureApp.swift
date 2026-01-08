@@ -10,6 +10,7 @@ import SwiftUI
 @main
 struct FitureApp: App {
     @StateObject private var authManager = AuthManager.shared
+    @AppStorage("colorScheme") private var colorScheme: String = "system"
     
     var body: some Scene {
         WindowGroup {
@@ -31,5 +32,6 @@ struct FitureApp: App {
                     .environmentObject(authManager)
             }
         }
+        .preferredColorScheme(colorScheme == "light" ? .light : colorScheme == "dark" ? .dark : nil)
     }
 }
