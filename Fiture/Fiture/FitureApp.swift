@@ -14,24 +14,26 @@ struct FitureApp: App {
     
     var body: some Scene {
         WindowGroup {
-            if authManager.isLoading {
-                // ローディング画面
-                VStack {
-                    Text("読み込み中...")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .padding(.top, 20)
+            Group {
+                if authManager.isLoading {
+                    // ローディング画面
+                    VStack {
+                        Text("読み込み中...")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 20)
+                    }
+                } else if authManager.isAuthenticated {
+                    // 認証済み → メイン画面
+                    RootView()
+                        .environmentObject(authManager)
+                } else {
+                    // 未認証 → 登録画面
+                    SignUpView()
+                        .environmentObject(authManager)
                 }
-            } else if authManager.isAuthenticated {
-                // 認証済み → メイン画面
-                RootView()
-                    .environmentObject(authManager)
-            } else {
-                // 未認証 → 登録画面
-                SignUpView()
-                    .environmentObject(authManager)
             }
+            .preferredColorScheme(colorScheme == "light" ? .light : colorScheme == "dark" ? .dark : nil)
         }
-        .preferredColorScheme(colorScheme == "light" ? .light : colorScheme == "dark" ? .dark : nil)
     }
 }
