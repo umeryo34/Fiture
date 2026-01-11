@@ -11,6 +11,7 @@ import Supabase
 class TrainingTargetManager: ObservableObject {
     @Published var trainingTargets: [TrainingTarget] = []
     @Published var selectedDate: Date = Date()
+    @Published var trainingTags: [TrainingTag] = []
     
     // 指定日付の全筋トレ目標を取得
     func fetchTrainingTargets(userId: UUID, date: Date = Date()) async throws {
@@ -156,6 +157,64 @@ class TrainingTargetManager: ObservableObject {
         await MainActor.run {
             trainingTargets.removeAll { $0.exerciseType == exerciseType }
         }
+    }
+    
+    // MARK: - タグ管理機能
+    
+    // タグ一覧を取得
+    func fetchTrainingTags(userId: UUID) async throws {
+        let userIdString = userId.uuidString.lowercased()
+        
+        let response: [TrainingTag] = try await SupabaseManager.shared.client
+            .from("training_tags")
+            .select()
+            .eq("user_id", value: userIdString)
+            .order("created_at", ascending: false)
+            .execute()
+            .value
+        
+        await MainActor.run {
+            trainingTags = response
+        }
+    }
+    
+    // タグを作成
+    func createTrainingTag(userId: UUID, tagName: String) async throws {
+        struct TrainingTagInsert: Encodable {
+            let userId: String
+            let tagName: String
+            
+            enum CodingKeys: String, CodingKey {
+                case userId = "user_id"
+                case tagName = "tag_name"
+            }
+        }
+        
+        let data = TrainingTagInsert(
+            userId: userId.uuidString.lowercased(),
+            tagName: tagName
+        )
+        
+        try await SupabaseManager.shared.client
+            .from("training_tags")
+            .insert(data)
+            .execute()
+        
+        // 再取得
+        try await fetchTrainingTags(userId: userId)
+    }
+    
+    // タグを削除
+    func deleteTrainingTag(userId: UUID, tagId: UUID) async throws {
+        try await SupabaseManager.shared.client
+            .from("training_tags")
+            .delete()
+            .eq("user_id", value: userId.uuidString.lowercased())
+            .eq("id", value: tagId.uuidString.lowercased())
+            .execute()
+        
+        // 再取得
+        try await fetchTrainingTags(userId: userId)
     }
 }
 

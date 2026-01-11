@@ -18,6 +18,8 @@ struct TrainingSettingView: View {
     @State private var isLoading: Bool = false
     @State private var errorMessage: String = ""
     @State private var showError: Bool = false
+    @State private var showingTagManagement: Bool = false
+    @State private var saveAsTag: Bool = false
     
     private let units = ["セット", "kg", "分"]
     
@@ -42,9 +44,47 @@ struct TrainingSettingView: View {
                 // 目標設定フォーム
                 VStack(spacing: 20) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("種目名")
-                            .font(.headline)
-                            .foregroundColor(.primary)
+                        HStack {
+                            Text("種目名")
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                            
+                            Spacer()
+                            
+                            Button(action: {
+                                showingTagManagement = true
+                            }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "tag.fill")
+                                        .font(.caption)
+                                    Text("タグ管理")
+                                        .font(.caption)
+                                }
+                                .foregroundColor(.red)
+                            }
+                        }
+                        
+                        // タグ選択セクション
+                        if !trainingTargetManager.trainingTags.isEmpty {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 10) {
+                                    ForEach(trainingTargetManager.trainingTags) { tag in
+                                        Button(action: {
+                                            exerciseType = tag.tagName
+                                        }) {
+                                            Text(tag.tagName)
+                                                .font(.subheadline)
+                                                .padding(.horizontal, 12)
+                                                .padding(.vertical, 6)
+                                                .background(exerciseType == tag.tagName ? Color.red.opacity(0.2) : Color(.systemGray5))
+                                                .foregroundColor(exerciseType == tag.tagName ? .red : .primary)
+                                                .cornerRadius(8)
+                                        }
+                                    }
+                                }
+                                .padding(.vertical, 4)
+                            }
+                        }
                         
                         TextField("例: ベンチプレス", text: $exerciseType)
                             .textFieldStyle(RoundedBorderTextFieldStyle())
@@ -71,6 +111,16 @@ struct TrainingSettingView: View {
                             }
                         }
                         .pickerStyle(SegmentedPickerStyle())
+                    }
+                    
+                    // タグとして保存するオプション
+                    Toggle(isOn: $saveAsTag) {
+                        HStack {
+                            Image(systemName: "tag.fill")
+                                .foregroundColor(.red)
+                            Text("この種目をタグとして保存")
+                                .font(.subheadline)
+                        }
                     }
                 }
                 .padding(.horizontal, 20)
@@ -110,6 +160,16 @@ struct TrainingSettingView: View {
                     }
                 }
             }
+            .sheet(isPresented: $showingTagManagement) {
+                TrainingTagManagementView()
+                    .environmentObject(authManager)
+                    .environmentObject(trainingTargetManager)
+            }
+            .task {
+                if let userId = authManager.currentUser?.id {
+                    try? await trainingTargetManager.fetchTrainingTags(userId: userId)
+                }
+            }
         }
     }
     
@@ -135,6 +195,15 @@ struct TrainingSettingView: View {
                     target: target,
                     date: currentDate
                 )
+                
+                // タグとして保存する場合
+                if saveAsTag {
+                    // 既に同じ名前のタグが存在するかチェック
+                    let existingTag = trainingTargetManager.trainingTags.first { $0.tagName == exerciseType }
+                    if existingTag == nil {
+                        try await trainingTargetManager.createTrainingTag(userId: userId, tagName: exerciseType)
+                    }
+                }
                 
                 await MainActor.run {
                     isLoading = false
