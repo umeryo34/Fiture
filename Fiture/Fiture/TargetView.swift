@@ -107,13 +107,6 @@ struct GoalProgressView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // タイトル
-            Text("進捗")
-                .font(.title)
-                .fontWeight(.bold)
-                .padding(.top, 20)
-                .padding(.bottom, 16)
-            
             // 日付選択バー
             DateSelectorBar(selectedDate: $runTargetManager.selectedDate) { newDate in
                 if let userId = authManager.currentUser?.id {
@@ -469,13 +462,6 @@ struct GoalAchievementView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // タイトル
-            Text("達成済み")
-                .font(.title)
-                .fontWeight(.bold)
-                .padding(.top, 20)
-                .padding(.bottom, 16)
-            
             // 日付選択バー
             DateSelectorBar(selectedDate: $runTargetManager.selectedDate) { newDate in
                 if let userId = authManager.currentUser?.id {
