@@ -59,13 +59,11 @@ struct SettingView: View {
     @EnvironmentObject var authManager: AuthManager
     @StateObject private var runTargetManager = RunTargetManager()
     @StateObject private var trainingTargetManager = TrainingTargetManager()
-    @StateObject private var caloriesTargetManager = CaloriesTargetManager()
     @StateObject private var weightTargetManager = WeightTargetManager()
     @StateObject private var waterEntryManager = WaterEntryManager()
     @State private var showingGoalSetting = false
     @State private var showingRunSetting = false
     @State private var showingTrainingSetting = false
-    @State private var showingCaloriesSetting = false
     @State private var showingWeightSetting = false
     @State private var showingWaterSetting = false
     @State private var selectedItem: SettingItem?
@@ -78,10 +76,8 @@ struct SettingView: View {
     let settingItems = [
         SettingItem(imageName: "run", text: "run", color: .blue, type: .run),
         SettingItem(imageName: "training", text: "training", color: .red, type: .training),
-        SettingItem(imageName: "calories", text: "calories", color: .green, type: .calories),
         SettingItem(imageName: "weight", text: "weight", color: .purple, type: .weight),
-        SettingItem(imageName: "water", text: "water", color: .cyan, type: .water),
-        SettingItem(imageName: "others", text: "others", color: .orange, type: .others)
+        SettingItem(imageName: "water", text: "water", color: .cyan, type: .water)
     ]
     
     var body: some View {
@@ -94,8 +90,6 @@ struct SettingView: View {
                             showingRunSetting = true
                         } else if item.type == .training {
                             showingTrainingSetting = true
-                        } else if item.type == .calories {
-                            showingCaloriesSetting = true
                         } else if item.type == .weight {
                             showingWeightSetting = true
                         } else if item.type == .water {
@@ -125,11 +119,6 @@ struct SettingView: View {
                 .environmentObject(authManager)
                 .environmentObject(trainingTargetManager)
         }
-        .sheet(isPresented: $showingCaloriesSetting) {
-            CaloriesSettingView()
-                .environmentObject(authManager)
-                .environmentObject(caloriesTargetManager)
-        }
         .sheet(isPresented: $showingWeightSetting) {
             WeightSettingView()
                 .environmentObject(authManager)
@@ -144,7 +133,6 @@ struct SettingView: View {
             if let userId = authManager.currentUser?.id {
                 try? await runTargetManager.fetchRunTarget(userId: userId)
                 try? await trainingTargetManager.fetchTrainingTargets(userId: userId)
-                try? await caloriesTargetManager.fetchCaloriesTarget(userId: userId)
                 try? await weightTargetManager.fetchWeightEntry(userId: userId)
                 try? await waterEntryManager.fetchWaterEntries(userId: userId)
             }
@@ -218,14 +206,12 @@ struct GoalSettingView: View {
             return ["km", "分", "回"]
         case .training:
             return ["分", "回", "セット"]
-        case .calories:
-            return ["kcal", "g"]
         case .weight:
             return ["kg"]
         case .water:
             return ["ml", "L", "杯"]
-        case .others:
-            return ["回", "分", "個"]
+        case .calories, .others:
+            return []
         }
     }
     

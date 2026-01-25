@@ -148,7 +148,7 @@ struct GoalProgressView: View {
                         }
                         
                         // その他の目標（ローカル）
-                        ForEach(goalManager.goals) { goal in
+                        ForEach(goalManager.goals.filter { $0.type != .calories && $0.type != .others }) { goal in
                             GoalProgressCard(goal: goal)
                         }
                     }
@@ -360,14 +360,12 @@ struct GoalProgressCard: View {
             return ("run", "run", .blue)
         case .training:
             return ("training", "training", .red)
-        case .calories:
-            return ("calories", "calories", .green)
         case .weight:
             return ("weight", "weight", .purple)
         case .water:
             return ("water", "water", .cyan)
-        case .others:
-            return ("others", "others", .orange)
+        case .calories, .others:
+            return ("", "", .gray)
         }
     }
     
@@ -645,14 +643,12 @@ struct ProgressInputView: View {
             return ("run", "run", .blue)
         case .training:
             return ("training", "training", .red)
-        case .calories:
-            return ("calories", "calories", .green)
         case .weight:
             return ("weight", "weight", .purple)
         case .water:
             return ("water", "water", .cyan)
-        case .others:
-            return ("others", "others", .orange)
+        case .calories, .others:
+            return ("", "", .gray)
         }
     }
     
