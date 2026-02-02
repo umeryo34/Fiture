@@ -14,9 +14,22 @@
 		2A54C4782EA13DE100807472 /* Fiture.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Fiture.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		2ACB6C162F307611003A885A /* Exceptions for "Fiture" folder in "Fiture" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 2A54C4772EA13DE100807472 /* Fiture */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		2A54C47A2EA13DE100807472 /* Fiture */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				2ACB6C162F307611003A885A /* Exceptions for "Fiture" folder in "Fiture" target */,
+			);
 			path = Fiture;
 			sourceTree = "<group>";
 		};
@@ -300,7 +313,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = PT73299PG3;
 				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Fiture/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Runを記録するために位置情報を使用します。ランニングルートを記録し、距離を計算するために必要です。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

@@ -14,8 +14,11 @@ class SupabaseManager {
     let client: SupabaseClient
     
     private init() {
-        let supabaseURL = URL(string: Config.supabaseURL)!
-        let supabaseKey = Config.supabaseAnonKey
+        guard let urlString = Bundle.main.object(forInfoDictionaryKey: "supabaseURL") as? String,
+              let supabaseURL = URL(string: urlString),
+              let supabaseKey = Bundle.main.object(forInfoDictionaryKey: "supabaseAnonKey") as? String else {
+            fatalError("Supabase configuration not found")
+        }
         
         client = SupabaseClient(
             supabaseURL: supabaseURL,

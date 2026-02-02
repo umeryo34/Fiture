@@ -4,3 +4,6 @@ xcuserdata/
 
 # --- Supabase credentials ---
 Fiture/Config.swift
+
+# --- Project files ---
+Info.plist
