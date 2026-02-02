@@ -4,7 +4,3 @@ xcuserdata/
 
 # --- Supabase credentials ---
 Fiture/Config.swift
-
-# --- Project files ---
-Fiture/Fiture.xcodeproj/project.pbxproj
-Fiture/Fiture/Info.plist
