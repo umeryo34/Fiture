@@ -14,10 +14,17 @@ class SupabaseManager {
     let client: SupabaseClient
     
     private init() {
-        guard let urlString = Bundle.main.object(forInfoDictionaryKey: "supabaseURL") as? String,
-              let supabaseURL = URL(string: urlString),
-              let supabaseKey = Bundle.main.object(forInfoDictionaryKey: "supabaseAnonKey") as? String else {
-            fatalError("Supabase configuration not found")
+        // Info.plistからSupabase設定を読み込む
+        guard let urlString = Bundle.main.object(forInfoDictionaryKey: "supabaseURL") as? String else {
+            fatalError("Supabase URL not found in Info.plist. Please check Info.plist file.")
+        }
+        
+        guard let supabaseURL = URL(string: urlString) else {
+            fatalError("Invalid Supabase URL format: \(urlString)")
+        }
+        
+        guard let supabaseKey = Bundle.main.object(forInfoDictionaryKey: "supabaseAnonKey") as? String else {
+            fatalError("Supabase Anon Key not found in Info.plist. Please check Info.plist file.")
         }
         
         client = SupabaseClient(
