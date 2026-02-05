@@ -103,7 +103,6 @@ struct GoalProgressView: View {
     @EnvironmentObject var goalManager: GoalManager
     @EnvironmentObject var authManager: AuthManager
     @StateObject private var runTargetManager = RunTargetManager()
-    @StateObject private var trainingTargetManager = TrainingTargetManager()
     
     var body: some View {
         VStack(spacing: 0) {
@@ -112,14 +111,13 @@ struct GoalProgressView: View {
                 if let userId = authManager.currentUser?.id {
                     Task {
                         try? await runTargetManager.fetchRunTarget(userId: userId, date: newDate)
-                        try? await trainingTargetManager.fetchTrainingTargets(userId: userId, date: newDate)
                     }
                 }
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 16)
             
-            if runTargetManager.runTarget == nil && trainingTargetManager.trainingTargets.isEmpty && goalManager.goals.isEmpty {
+            if runTargetManager.runTarget == nil && goalManager.goals.isEmpty {
                 VStack(spacing: 20) {
                     Image(systemName: "target")
                         .font(.system(size: 60))
@@ -142,11 +140,6 @@ struct GoalProgressView: View {
                             RunProgressCard(runTarget: runTarget, runTargetManager: runTargetManager, userId: authManager.currentUser?.id ?? UUID())
                         }
                         
-                        // 筋トレ目標（Supabase）
-                        ForEach(trainingTargetManager.trainingTargets) { trainingTarget in
-                            TrainingProgressCard(trainingTarget: trainingTarget, trainingTargetManager: trainingTargetManager, userId: authManager.currentUser?.id ?? UUID())
-                        }
-                        
                         // その他の目標（ローカル）
                         ForEach(goalManager.goals.filter { $0.type != .calories && $0.type != .others }) { goal in
                             GoalProgressCard(goal: goal)
@@ -161,7 +154,6 @@ struct GoalProgressView: View {
         .task {
             if let userId = authManager.currentUser?.id {
                 try? await runTargetManager.fetchRunTarget(userId: userId)
-                try? await trainingTargetManager.fetchTrainingTargets(userId: userId)
             }
         }
     }
@@ -456,7 +448,6 @@ struct GoalAchievementView: View {
     @EnvironmentObject var goalManager: GoalManager
     @EnvironmentObject var authManager: AuthManager
     @StateObject private var runTargetManager = RunTargetManager()
-    @StateObject private var trainingTargetManager = TrainingTargetManager()
     
     var body: some View {
         VStack(spacing: 0) {
@@ -465,14 +456,13 @@ struct GoalAchievementView: View {
                 if let userId = authManager.currentUser?.id {
                     Task {
                         try? await runTargetManager.fetchRunTarget(userId: userId, date: newDate)
-                        try? await trainingTargetManager.fetchTrainingTargets(userId: userId, date: newDate)
                     }
                 }
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 16)
             
-            let hasAchieved = (runTargetManager.runTarget?.isAchieved ?? false) || trainingTargetManager.trainingTargets.contains(where: { $0.isAchieved })
+            let hasAchieved = (runTargetManager.runTarget?.isAchieved ?? false)
             
             if hasAchieved {
                 // 達成済みの目標を表示
@@ -481,11 +471,6 @@ struct GoalAchievementView: View {
                         // Run目標
                         if let runTarget = runTargetManager.runTarget, runTarget.isAchieved {
                             AchievedRunCard(runTarget: runTarget)
-                        }
-                        
-                        // 筋トレ目標
-                        ForEach(trainingTargetManager.trainingTargets.filter { $0.isAchieved }) { trainingTarget in
-                            AchievedTrainingCard(trainingTarget: trainingTarget)
                         }
                     }
                     .padding(.horizontal, 20)
@@ -512,7 +497,6 @@ struct GoalAchievementView: View {
         .task {
             if let userId = authManager.currentUser?.id {
                 try? await runTargetManager.fetchRunTarget(userId: userId)
-                try? await trainingTargetManager.fetchTrainingTargets(userId: userId)
             }
         }
     }
