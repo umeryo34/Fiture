@@ -11,13 +11,11 @@ import SwiftUI
 @MainActor
 class ProgressViewModel: ObservableObject {
     @Published var caloriesHistory: [(date: Date, totalCalories: Double)] = []
-    @Published var waterHistory: [(date: Date, totalMl: Double)] = []
     @Published var weightEntries: [WeightEntry] = []
     @Published var isLoading = false
     
     private let weightTargetManager = WeightTargetManager()
     private let caloriesTargetManager = CaloriesTargetManager()
-    private let waterEntryManager = WaterEntryManager()
     weak var authManager: AuthManager?
     
     func setAuthManager(_ authManager: AuthManager) {
@@ -37,7 +35,6 @@ class ProgressViewModel: ObservableObject {
         
         async let fetchWeight = weightTargetManager.fetchWeightEntries(userId: userId, days: 30)
         async let fetchCalories = caloriesTargetManager.fetchCaloriesHistory(userId: userId, days: 30)
-        async let fetchWater = waterEntryManager.fetchWaterHistory(userId: userId, days: 30)
         
         do {
             try await fetchWeight
@@ -52,13 +49,6 @@ class ProgressViewModel: ObservableObject {
             print("カロリーデータ取得完了: \(caloriesHistory.count)件")
         } catch {
             print("カロリーデータ取得エラー: \(error)")
-        }
-        
-        do {
-            waterHistory = try await fetchWater
-            print("水のデータ取得完了: \(waterHistory.count)件")
-        } catch {
-            print("水のデータ取得エラー: \(error)")
         }
     }
 }

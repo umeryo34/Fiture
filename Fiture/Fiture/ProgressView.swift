@@ -11,9 +11,7 @@ struct ProgressView: View {
     @EnvironmentObject var authManager: AuthManager
     @StateObject private var weightTargetManager = WeightTargetManager()
     @StateObject private var caloriesTargetManager = CaloriesTargetManager()
-    @StateObject private var waterEntryManager = WaterEntryManager()
     @State private var caloriesHistory: [(date: Date, totalCalories: Double)] = []
-    @State private var waterHistory: [(date: Date, totalMl: Double)] = []
     
     var body: some View {
         ScrollView {
@@ -72,37 +70,14 @@ struct ProgressView: View {
                         .padding(.horizontal, 20)
                 }
                 
-                // 水のグラフ
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Image("water")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 30, height: 30)
-                        Text("水の摂取量")
-                            .font(.headline)
-                            .fontWeight(.bold)
-                    }
-                    .padding(.horizontal, 20)
-                    
-                    WaterChartView(chartData: waterHistory)
-                        .padding(.vertical, 10)
-                        .background(
-                            RoundedRectangle(cornerRadius: 15)
-                                .fill(Color(.systemGray6))
-                        )
-                        .padding(.horizontal, 20)
-                }
-                
                 Spacer()
             }
         }
         .task {
-            // 体重データ、カロリーデータ、水のデータを取得
+            // 体重データ、カロリーデータを取得
             if let userId = authManager.currentUser?.id {
                 async let fetchWeight = weightTargetManager.fetchWeightEntries(userId: userId, days: 30)
                 async let fetchCalories = caloriesTargetManager.fetchCaloriesHistory(userId: userId, days: 30)
-                async let fetchWater = waterEntryManager.fetchWaterHistory(userId: userId, days: 30)
                 
                 do {
                     try await fetchWeight
@@ -116,13 +91,6 @@ struct ProgressView: View {
                     print("カロリーデータ取得完了: \(caloriesHistory.count)件")
                 } catch {
                     print("カロリーデータ取得エラー: \(error)")
-                }
-                
-                do {
-                    waterHistory = try await fetchWater
-                    print("水のデータ取得完了: \(waterHistory.count)件")
-                } catch {
-                    print("水のデータ取得エラー: \(error)")
                 }
             } else {
                 print("ユーザーIDが取得できません")
