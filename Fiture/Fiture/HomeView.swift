@@ -10,51 +10,26 @@ import Combine
 
 struct HomeView: View {
     @EnvironmentObject var authManager: AuthManager
-    @StateObject private var caloriesTargetManager = CaloriesTargetManager()
-    @State private var showingTargetSetting = false
-    @State private var showingCaloriesInput = false
-    @State private var showingDatePicker = false
-    @State private var showingSearch = false
-    @State private var selectedDate: Date = Date()
+    @StateObject private var viewModel = HomeViewModel()
     
-    private var userName: String {
-        authManager.currentUser?.name ?? "ユーザー"
+    var body: some View {
+        HomeViewContent(viewModel: viewModel)
+            .environmentObject(authManager)
+            .onAppear {
+                viewModel.setAuthManager(authManager)
+            }
     }
-    
-    // 目標カロリー値
-    private var targetCalories: Double? {
-        caloriesTargetManager.caloriesTarget?.target
-    }
-    
-    // 合計カロリーの色を決定（目標超過時は赤色）
-    private var totalCaloriesColor: Color {
-        guard let target = targetCalories, target > 0 else {
-            return .green
-        }
-        return caloriesTargetManager.totalCalories > target ? .red : .green
-    }
-    
-    // 合計カロリーの背景色を決定
-    private var totalCaloriesBackgroundColor: Color {
-        guard let target = targetCalories, target > 0 else {
-            return Color.green.opacity(0.1)
-        }
-        return caloriesTargetManager.totalCalories > target ? Color.red.opacity(0.1) : Color.green.opacity(0.1)
-    }
-    
-    // 合計カロリーのボーダー色を決定
-    private var totalCaloriesBorderColor: Color {
-        guard let target = targetCalories, target > 0 else {
-            return Color.green.opacity(0.3)
-        }
-        return caloriesTargetManager.totalCalories > target ? Color.red.opacity(0.3) : Color.green.opacity(0.3)
-    }
+}
+
+private struct HomeViewContent: View {
+    @EnvironmentObject var authManager: AuthManager
+    @ObservedObject var viewModel: HomeViewModel
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Button(action: {
-                    showingDatePicker = true
+                    viewModel.showingDatePicker = true
                 }) {
                     Image(systemName: "calendar")
                         .font(.system(size: 22))
@@ -62,14 +37,14 @@ struct HomeView: View {
                 }
                 
                 Spacer()
-                    Text("こんにちは \(userName)さん")
+                    Text("こんにちは \(viewModel.userName)さん")
                     .font(.title3)
                     .foregroundColor(.primary)
                     .lineLimit(1)
                 Spacer()
                 
                 Button(action: {
-                    showingSearch = true
+                    viewModel.showingSearch = true
                 }) {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: 22))
@@ -91,10 +66,10 @@ struct HomeView: View {
                 .frame(height: 20)
             
             // カロリー情報と進捗バー
-            if let target = targetCalories, target > 0 {
+            if let target = viewModel.targetCalories, target > 0 {
                 VStack(spacing: 16) {
                     VStack(spacing: 8) {
-                        Text("\(String(format: "%.0f", caloriesTargetManager.totalCalories)) / \(String(format: "%.0f", target)) kcal")
+                        Text("\(String(format: "%.0f", viewModel.totalCalories)) / \(String(format: "%.0f", target)) kcal")
                             .font(.system(size: 32, weight: .bold))
                             .foregroundColor(.primary)
                         
@@ -107,8 +82,8 @@ struct HomeView: View {
                                     .cornerRadius(4)
                                 
                                 Rectangle()
-                                    .fill(progressColor)
-                                    .frame(width: min(geometry.size.width, geometry.size.width * CGFloat(min(caloriesTargetManager.totalCalories / target, 1.0))), height: 8)
+                                    .fill(viewModel.progressColor)
+                                    .frame(width: min(geometry.size.width, geometry.size.width * CGFloat(min(viewModel.totalCalories / target, 1.0))), height: 8)
                                     .cornerRadius(4)
                             }
                         }
@@ -121,7 +96,7 @@ struct HomeView: View {
                     HStack(spacing: 12) {
                         // 食事追加ボタン
                         Button(action: {
-                            showingCaloriesInput = true
+                            viewModel.showingCaloriesInput = true
                         }) {
                             HStack {
                                 Image(systemName: "plus.circle.fill")
@@ -138,7 +113,7 @@ struct HomeView: View {
                         
                         // 目標設定ボタン
                         Button(action: {
-                            showingTargetSetting = true
+                            viewModel.showingTargetSetting = true
                         }) {
                             HStack {
                                 Image(systemName: "pencil")
@@ -158,14 +133,14 @@ struct HomeView: View {
             } else {
                 // 目標が設定されていない場合
                 VStack(spacing: 16) {
-                    Text("\(String(format: "%.0f", caloriesTargetManager.totalCalories)) kcal")
+                    Text("\(String(format: "%.0f", viewModel.totalCalories)) kcal")
                         .font(.system(size: 32, weight: .bold))
                         .foregroundColor(.primary)
                     
                     VStack(spacing: 12) {
                         // 食事追加ボタン
                         Button(action: {
-                            showingCaloriesInput = true
+                            viewModel.showingCaloriesInput = true
                         }) {
                             HStack {
                                 Image(systemName: "plus.circle.fill")
@@ -183,7 +158,7 @@ struct HomeView: View {
                         
                         // カロリー目標設定ボタン
                         Button(action: {
-                            showingTargetSetting = true
+                            viewModel.showingTargetSetting = true
                         }) {
                             HStack {
                                 Image(systemName: "target")
@@ -213,7 +188,7 @@ struct HomeView: View {
                     .foregroundColor(.primary)
                     .padding(.horizontal, 20)
                 
-                if caloriesTargetManager.caloriesEntries.isEmpty {
+                if viewModel.caloriesEntries.isEmpty {
                     // 食事がない場合（中央配置）
                     Spacer()
                     VStack(spacing: 12) {
@@ -237,14 +212,14 @@ struct HomeView: View {
                     // 食事リスト
                     ScrollView {
                         VStack(spacing: 8) {
-                            ForEach(caloriesTargetManager.caloriesEntries) { entry in
+                            ForEach(viewModel.caloriesEntries) { entry in
                                 HStack {
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(entry.foodName)
                                             .font(.subheadline)
                                             .foregroundColor(.primary)
                                         
-                                        Text(formatTime(entry.createdAt))
+                                        Text(viewModel.formatTime(entry.createdAt))
                                             .font(.caption)
                                             .foregroundColor(.secondary)
                                     }
@@ -275,19 +250,19 @@ struct HomeView: View {
                         
                         Spacer()
                         
-                        Text("\(String(format: "%.0f", caloriesTargetManager.totalCalories)) kcal")
+                        Text("\(String(format: "%.0f", viewModel.totalCalories)) kcal")
                             .font(.headline)
                             .fontWeight(.bold)
-                            .foregroundColor(totalCaloriesColor)
+                            .foregroundColor(viewModel.totalCaloriesColor)
                     }
                     .padding()
                     .background(
                         RoundedRectangle(cornerRadius: 12)
-                            .fill(totalCaloriesBackgroundColor)
+                            .fill(viewModel.totalCaloriesBackgroundColor)
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
-                            .stroke(totalCaloriesBorderColor, lineWidth: 1)
+                            .stroke(viewModel.totalCaloriesBorderColor, lineWidth: 1)
                     )
                     .padding(.horizontal, 20)
                 }
@@ -295,125 +270,46 @@ struct HomeView: View {
             .padding(.bottom, 20)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
-        .sheet(isPresented: $showingTargetSetting) {
+        .sheet(isPresented: $viewModel.showingTargetSetting) {
             CaloriesTargetSettingView(
-                caloriesTargetManager: caloriesTargetManager,
-                initialTarget: targetCalories
+                caloriesTargetManager: viewModel.getCaloriesTargetManager(),
+                initialTarget: viewModel.targetCalories
             )
             .environmentObject(authManager)
         }
-        .sheet(isPresented: $showingCaloriesInput) {
+        .sheet(isPresented: $viewModel.showingCaloriesInput) {
             if let userId = authManager.currentUser?.id {
                 CaloriesProgressInputView(
-                    caloriesTargetManager: caloriesTargetManager,
+                    caloriesTargetManager: viewModel.getCaloriesTargetManager(),
                     userId: userId,
-                    date: selectedDate
+                    date: viewModel.selectedDate
                 )
             }
         }
-        .sheet(isPresented: $showingDatePicker) {
-            DatePickerSheet(selectedDate: $selectedDate) { newDate in
-                selectedDate = newDate
+        .sheet(isPresented: $viewModel.showingDatePicker) {
+            DatePickerSheet(selectedDate: $viewModel.selectedDate) { newDate in
+                viewModel.selectedDate = newDate
                 Task {
-                    await fetchCaloriesDataForDate(newDate)
+                    await viewModel.fetchCaloriesDataForDate(newDate)
                 }
             }
         }
-        .sheet(isPresented: $showingSearch) {
+        .sheet(isPresented: $viewModel.showingSearch) {
             CaloriesSearchView()
                 .environmentObject(authManager)
-                .environmentObject(caloriesTargetManager)
+                .environmentObject(viewModel.getCaloriesTargetManager())
         }
         .task {
             // 初回表示時にデータを取得
-            selectedDate = Date()
-            await fetchCaloriesData()
+            viewModel.selectedDate = Date()
+            await viewModel.fetchCaloriesData()
         }
         .onReceive(NotificationCenter.default.publisher(for: .caloriesDataDidUpdate)) { _ in
             // カロリーデータが更新された時に再取得（選択された日付のデータ）
             print("HomeView: カロリーデータ更新通知を受信")
             Task {
-                await fetchCaloriesDataForDate(selectedDate)
+                await viewModel.fetchCaloriesDataForDate(viewModel.selectedDate)
             }
-        }
-    }
-    
-    // 時間をフォーマットする関数
-    private func formatTime(_ date: Date) -> String {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "HH:mm"
-        dateFormatter.timeZone = TimeZone.current
-        return dateFormatter.string(from: date)
-    }
-    
-    // 選択された日付をフォーマットする関数
-    private func formatSelectedDate(_ date: Date) -> String {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "M月d日 (E)"
-        dateFormatter.locale = Locale(identifier: "ja_JP")
-        dateFormatter.timeZone = TimeZone.current
-        return dateFormatter.string(from: date)
-    }
-    
-    // 進捗バーの色を決定（滑らかに変化）
-    private var progressColor: Color {
-        guard let target = targetCalories, target > 0 else {
-            return .green
-        }
-        
-        let percentage = (caloriesTargetManager.totalCalories / target) * 100
-        
-        // 100%以上は赤固定
-        if percentage >= 100 {
-            return .red
-        }
-        
-        // 0〜80%：緑 → 黄（滑らかに）
-        if percentage <= 80 {
-            let progress = percentage / 80.0 // 0.0 〜 1.0
-            // 緑(0, 255, 0) → 黄(255, 255, 0)
-            let red = progress * 255
-            let green: Double = 255
-            let blue: Double = 0
-            return Color(red: red / 255.0, green: green / 255.0, blue: blue / 255.0)
-        }
-        
-        // 80〜100%：黄 → オレンジ → 赤（滑らかに）
-        // 80% = 黄(255, 255, 0)
-        // 90% = オレンジ(255, 165, 0)
-        // 100% = 赤(255, 0, 0)
-        let progress = (percentage - 80) / 20.0 // 0.0 〜 1.0
-        
-        if progress <= 0.5 {
-            // 80〜90%：黄 → オレンジ
-            let localProgress = progress * 2.0 // 0.0 〜 1.0
-            let red: Double = 255
-            let green = 255 - (255 - 165) * localProgress // 255 → 165
-            let blue: Double = 0
-            return Color(red: red / 255.0, green: green / 255.0, blue: blue / 255.0)
-        } else {
-            // 90〜100%：オレンジ → 赤
-            let localProgress = (progress - 0.5) * 2.0 // 0.0 〜 1.0
-            let red: Double = 255
-            let green = 165 - 165 * localProgress // 165 → 0
-            let blue: Double = 0
-            return Color(red: red / 255.0, green: green / 255.0, blue: blue / 255.0)
-        }
-    }
-    
-    // カロリーデータを取得する関数
-    private func fetchCaloriesData() async {
-        await fetchCaloriesDataForDate(selectedDate)
-    }
-    
-    // 指定日付のカロリーデータを取得する関数
-    private func fetchCaloriesDataForDate(_ date: Date) async {
-        if let userId = authManager.currentUser?.id {
-            async let fetchEntries = caloriesTargetManager.fetchCaloriesEntries(userId: userId, date: date)
-            async let fetchTarget = caloriesTargetManager.fetchCaloriesTarget(userId: userId, date: date)
-            try? await fetchEntries
-            try? await fetchTarget
-            print("HomeView: カロリーデータ再取得完了 - totalCalories: \(caloriesTargetManager.totalCalories), target: \(caloriesTargetManager.caloriesTarget?.target ?? 0), date: \(date)")
         }
     }
 }

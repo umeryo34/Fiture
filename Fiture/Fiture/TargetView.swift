@@ -354,8 +354,6 @@ struct GoalProgressCard: View {
             return ("training", "training", .red)
         case .weight:
             return ("weight", "weight", .purple)
-        case .water:
-            return ("water", "water", .cyan)
         case .calories, .others:
             return ("", "", .gray)
         }
@@ -629,8 +627,6 @@ struct ProgressInputView: View {
             return ("training", "training", .red)
         case .weight:
             return ("weight", "weight", .purple)
-        case .water:
-            return ("water", "water", .cyan)
         case .calories, .others:
             return ("", "", .gray)
         }
