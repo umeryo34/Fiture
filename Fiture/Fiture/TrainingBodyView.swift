@@ -9,9 +9,7 @@ import SwiftUI
 
 struct TrainingBodyView: View {
     @EnvironmentObject var authManager: AuthManager
-    @StateObject private var trainingTargetManager = TrainingTargetManager()
-    @State private var showingMuscleRecord: Bool = false
-    @State private var selectedMuscleType: InteractiveBodyModelView.MuscleType? = nil
+    @StateObject private var viewModel = TrainingBodyViewModel()
     
     var body: some View {
         ScrollView {
@@ -27,24 +25,23 @@ struct TrainingBodyView: View {
                 
                 // 体の模型（タップ可能な部位付き）
                 InteractiveBodyModelView(
-                    selectedMuscle: $selectedMuscleType,
+                    selectedMuscle: $viewModel.selectedMuscleType,
                     onMuscleTapped: { muscleType in
-                        selectedMuscleType = muscleType
-                        showingMuscleRecord = true
+                        viewModel.selectMuscle(muscleType)
                     }
                 )
                 .frame(height: 400)
                 .padding(.vertical, 20)
                 
                 // 今日の筋トレ目標
-                if !trainingTargetManager.trainingTargets.isEmpty {
+                if !viewModel.trainingTargets.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("今日の筋トレ")
                             .font(.headline)
                             .fontWeight(.bold)
                             .padding(.horizontal, 20)
                         
-                        ForEach(trainingTargetManager.trainingTargets) { target in
+                        ForEach(viewModel.trainingTargets) { target in
                             TrainingSummaryCard(trainingTarget: target)
                                 .padding(.horizontal, 20)
                         }
@@ -68,15 +65,14 @@ struct TrainingBodyView: View {
             }
         }
         .task {
-            if let userId = authManager.currentUser?.id {
-                try? await trainingTargetManager.fetchTrainingTargets(userId: userId)
-            }
+            viewModel.setAuthManager(authManager)
+            await viewModel.fetchTrainingTargets()
         }
-        .sheet(isPresented: $showingMuscleRecord) {
-            if let muscleType = selectedMuscleType {
+        .sheet(isPresented: $viewModel.showingMuscleRecord) {
+            if let muscleType = viewModel.selectedMuscleType {
                 MuscleRecordView(
                     muscleType: muscleType,
-                    trainingTargetManager: trainingTargetManager
+                    trainingTargetManager: viewModel.getTrainingTargetManager()
                 )
                 .environmentObject(authManager)
             }
@@ -809,39 +805,16 @@ struct TrainingSet: Identifiable {
 // 部位別筋トレ記録画面
 struct MuscleRecordView: View {
     let muscleType: InteractiveBodyModelView.MuscleType
-    @ObservedObject var trainingTargetManager: TrainingTargetManager
+    let trainingTargetManager: TrainingTargetManager
     @EnvironmentObject var authManager: AuthManager
     @Environment(\.dismiss) private var dismiss
     
-    @State private var exerciseType: String = ""
-    @State private var sets: [TrainingSet] = [TrainingSet()]
-    @State private var isLoading: Bool = false
-    @State private var showError: Bool = false
-    @State private var errorMessage: String = ""
+    @StateObject private var viewModel: MuscleRecordViewModel
     
-    // 部位ごとの種目リスト
-    private var availableExercises: [String] {
-        switch muscleType {
-        case .chest:
-            return ["ベンチプレス", "インクラインベンチプレス", "ダンベルベンチプレス", "ディップス", "荷重ディップス", "ダンベルフライ", "インクラインダンベルフライ", "腕立て伏せ", "ナロープッシュアップ", "チェストプレスマシン", "ペックデッキフライ"]
-        case .back:
-            return ["グッドモーニング", "デッドリフト", "プルアップ", "ベントオーバーロー", "ラットプルダウン", "シーテッドロウマシン", "シーテッドケーブルロウ", "ダンベルロウ", "ワンハンドダンベルロウ"]
-        case .abs:
-            return ["腹筋(クランチ)", "Vアップ", "プランク", "レッグレイズ", "レッグレイズマシン"]
-        case .arms:
-            return ["バーベルカール", "ダンベルカール", "ダンベルリストカール", "プリーチャーカールマシン", "ケーブルカール"]
-        case .triceps:
-            return ["ダンベルフレンチプレス", "バーベルフレンチプレス", "クローズグリップベンチプレス", "ケーブルトライセプスエクステンション"]
-        case .legs:
-            return ["スクワット", "ハーフスクワット", "レッグプレス", "レッグカール", "レッグエクステンション", "シーテッドカーフレイズ", "ブルガリアンスクワット"]
-        case .glutes:
-            return [] // 尻は現時点では種目なし
-        }
-    }
-    
-    // 腹筋は重量なし
-    private var showWeightInput: Bool {
-        muscleType != .abs
+    init(muscleType: InteractiveBodyModelView.MuscleType, trainingTargetManager: TrainingTargetManager) {
+        self.muscleType = muscleType
+        self.trainingTargetManager = trainingTargetManager
+        _viewModel = StateObject(wrappedValue: MuscleRecordViewModel(muscleType: muscleType, trainingTargetManager: trainingTargetManager))
     }
     
     var body: some View {
@@ -872,17 +845,17 @@ struct MuscleRecordView: View {
                                 .foregroundColor(.primary)
                             
                             Menu {
-                                ForEach(availableExercises, id: \.self) { exercise in
+                                ForEach(viewModel.availableExercises, id: \.self) { exercise in
                                     Button(action: {
-                                        exerciseType = exercise
+                                        viewModel.exerciseType = exercise
                                     }) {
                                         Text(exercise)
                                     }
                                 }
                             } label: {
                                 HStack {
-                                    Text(exerciseType.isEmpty ? "選択してください" : exerciseType)
-                                        .foregroundColor(exerciseType.isEmpty ? .secondary : .primary)
+                                    Text(viewModel.exerciseType.isEmpty ? "選択してください" : viewModel.exerciseType)
+                                        .foregroundColor(viewModel.exerciseType.isEmpty ? .secondary : .primary)
                                     Spacer()
                                     Image(systemName: "chevron.down")
                                         .font(.caption)
@@ -902,23 +875,21 @@ struct MuscleRecordView: View {
                                 .foregroundColor(.primary)
                                 .padding(.horizontal, 20)
                             
-                            ForEach(sets.indices, id: \.self) { index in
+                            ForEach(viewModel.sets.indices, id: \.self) { index in
                                 SetRowView(
                                     setNumber: index + 1,
-                                    set: $sets[index],
+                                    set: $viewModel.sets[index],
                                     onDelete: {
-                                        if sets.count > 1 {
-                                            sets.remove(at: index)
-                                        }
+                                        viewModel.removeSet(at: index)
                                     },
-                                    showWeight: showWeightInput
+                                    showWeight: viewModel.showWeightInput
                                 )
                                 .padding(.horizontal, 20)
                             }
                             
                             // セットを追加ボタン
                             Button(action: {
-                                sets.append(TrainingSet())
+                                viewModel.addSet()
                             }) {
                                 HStack {
                                     Image(systemName: "plus.circle.fill")
@@ -942,8 +913,8 @@ struct MuscleRecordView: View {
                 }
                 
                 // エラーメッセージ
-                if showError {
-                    Text(errorMessage)
+                if viewModel.showError {
+                    Text(viewModel.errorMessage)
                         .font(.caption)
                         .foregroundColor(.red)
                         .padding(.horizontal, 20)
@@ -952,9 +923,14 @@ struct MuscleRecordView: View {
                 
                 // 保存ボタン
                 Button(action: {
-                    saveRecord()
+                    Task {
+                        await viewModel.saveRecord()
+                        if !viewModel.showError {
+                            dismiss()
+                        }
+                    }
                 }) {
-                    if isLoading {
+                    if viewModel.isLoading {
                         ProgressView()
                             .progressViewStyle(CircularProgressViewStyle(tint: .white))
                             .frame(maxWidth: .infinity)
@@ -967,11 +943,11 @@ struct MuscleRecordView: View {
                             .padding()
                     }
                 }
-                .background(isFormValid ? Color.red : Color.gray)
+                .background(viewModel.isFormValid ? Color.red : Color.gray)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .padding(.horizontal, 20)
                 .padding(.bottom, 20)
-                .disabled(!isFormValid || isLoading)
+                .disabled(!viewModel.isFormValid || viewModel.isLoading)
             }
             .navigationTitle("筋トレ記録")
             .navigationBarTitleDisplayMode(.inline)
@@ -984,96 +960,8 @@ struct MuscleRecordView: View {
                 }
             }
         }
-    }
-    
-    private var isFormValid: Bool {
-        guard !exerciseType.isEmpty else { return false }
-        
-        // 腹の場合は回数のみ、それ以外は重量と回数が必要
-        if muscleType == .abs {
-            return sets.contains { !$0.reps.isEmpty }
-        } else {
-            return sets.contains { !$0.weight.isEmpty && !$0.reps.isEmpty }
-        }
-    }
-    
-    private func saveRecord() {
-        guard let userId = authManager.currentUser?.id else {
-            errorMessage = "ユーザー情報が取得できません"
-            showError = true
-            return
-        }
-        
-        // 有効なセットをフィルタリング（腹の場合は回数のみ、それ以外は重量と回数）
-        let validSets: [TrainingSet]
-        if muscleType == .abs {
-            validSets = sets.filter { !$0.reps.isEmpty }
-        } else {
-            validSets = sets.filter { !$0.weight.isEmpty && !$0.reps.isEmpty }
-        }
-        
-        guard !validSets.isEmpty else {
-            errorMessage = "少なくとも1セットの記録が必要です"
-            showError = true
-            return
-        }
-        
-        isLoading = true
-        showError = false
-        
-        Task {
-            do {
-                let currentDate = trainingTargetManager.selectedDate
-                
-                // セット数を目標として保存
-                let targetSets = Double(validSets.count)
-                
-                // 既存の目標があるか確認
-                let existing = try await trainingTargetManager.fetchTrainingTarget(
-                    userId: userId,
-                    date: currentDate,
-                    exerciseType: exerciseType
-                )
-                
-                if let existing = existing {
-                    // 既存の目標を更新（セット数を更新）
-                    try await trainingTargetManager.updateTrainingTarget(
-                        userId: userId,
-                        exerciseType: exerciseType,
-                        target: targetSets,
-                        attempt: targetSets, // 記録したセット数を進捗として設定
-                        date: currentDate
-                    )
-                } else {
-                    // 新規作成
-                    try await trainingTargetManager.createOrUpdateTrainingTarget(
-                        userId: userId,
-                        exerciseType: exerciseType,
-                        target: targetSets,
-                        date: currentDate
-                    )
-                    // 進捗も更新
-                    try await trainingTargetManager.updateTrainingTarget(
-                        userId: userId,
-                        exerciseType: exerciseType,
-                        attempt: targetSets,
-                        date: currentDate
-                    )
-                }
-                
-                // TODO: セットごとの詳細（重量、回数）を別テーブルに保存する場合はここで実装
-                
-                await MainActor.run {
-                    isLoading = false
-                    dismiss()
-                }
-            } catch {
-                await MainActor.run {
-                    isLoading = false
-                    showError = true
-                    errorMessage = "記録の保存に失敗しました: \(error.localizedDescription)"
-                }
-            }
+        .onAppear {
+            viewModel.setAuthManager(authManager)
         }
     }
 }
