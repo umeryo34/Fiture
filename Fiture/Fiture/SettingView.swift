@@ -59,11 +59,9 @@ struct SettingView: View {
     @EnvironmentObject var authManager: AuthManager
     @StateObject private var runTargetManager = RunTargetManager()
     @StateObject private var trainingTargetManager = TrainingTargetManager()
-    @StateObject private var weightTargetManager = WeightTargetManager()
     @State private var showingGoalSetting = false
     @State private var showingRunSetting = false
     @State private var showingTrainingSetting = false
-    @State private var showingWeightSetting = false
     @State private var selectedItem: SettingItem?
     
     let columns = [
@@ -73,8 +71,7 @@ struct SettingView: View {
     
     let settingItems = [
         SettingItem(imageName: "run", text: "run", color: .blue, type: .run),
-        SettingItem(imageName: "training", text: "training", color: .red, type: .training),
-        SettingItem(imageName: "weight", text: "weight", color: .purple, type: .weight)
+        SettingItem(imageName: "training", text: "training", color: .red, type: .training)
     ]
     
     var body: some View {
@@ -87,8 +84,6 @@ struct SettingView: View {
                             showingRunSetting = true
                         } else if item.type == .training {
                             showingTrainingSetting = true
-                        } else if item.type == .weight {
-                            showingWeightSetting = true
                         } else {
                             showingGoalSetting = true
                         }
@@ -114,16 +109,10 @@ struct SettingView: View {
                 .environmentObject(authManager)
                 .environmentObject(trainingTargetManager)
         }
-        .sheet(isPresented: $showingWeightSetting) {
-            WeightSettingView()
-                .environmentObject(authManager)
-                .environmentObject(weightTargetManager)
-        }
         .task {
             if let userId = authManager.currentUser?.id {
                 try? await runTargetManager.fetchRunTarget(userId: userId)
                 try? await trainingTargetManager.fetchTrainingTargets(userId: userId)
-                try? await weightTargetManager.fetchWeightEntry(userId: userId)
             }
         }
     }
@@ -194,9 +183,7 @@ struct GoalSettingView: View {
             return ["km", "分", "回"]
         case .training:
             return ["分", "回", "セット"]
-        case .weight:
-            return ["kg"]
-        case .calories, .others:
+        case .calories, .others, .weight:
             return []
         }
     }

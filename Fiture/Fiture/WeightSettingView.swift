@@ -118,9 +118,9 @@ struct WeightSettingView: View {
             }
         }
         .task {
-            // 既存の体重記録を取得
+            // 既存の体重記録を取得（選択された日付で）
             if let userId = authManager.currentUser?.id {
-                async let fetchEntry = weightTargetManager.fetchWeightEntry(userId: userId)
+                async let fetchEntry = weightTargetManager.fetchWeightEntry(userId: userId, date: weightTargetManager.selectedDate)
                 async let fetchEntries = weightTargetManager.fetchWeightEntries(userId: userId, days: 30)
                 try? await fetchEntry
                 try? await fetchEntries
@@ -159,6 +159,9 @@ struct WeightSettingView: View {
                 
                 // グラフデータも更新
                 try await weightTargetManager.fetchWeightEntries(userId: userId, days: 30)
+                
+                // 体重データ更新を通知
+                NotificationCenter.default.post(name: .init("WeightDataDidUpdate"), object: nil)
                 
                 await MainActor.run {
                     isLoading = false
