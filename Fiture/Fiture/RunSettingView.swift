@@ -166,6 +166,9 @@ struct RunSettingView: View {
                 // UPSERT: 既存レコードがあれば更新、なければ作成
                 try await runTargetManager.createOrUpdateRunTarget(userId: userId, target: target, date: currentDate)
                 
+                // Run目標更新を通知
+                NotificationCenter.default.post(name: .init("RunTargetDidUpdate"), object: nil)
+                
                 await MainActor.run {
                     isLoading = false
                     dismiss()
