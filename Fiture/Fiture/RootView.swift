@@ -12,7 +12,7 @@ struct RootView: View {
     
     var body: some View {
         TabView {
-            HomeView()
+            FoodView()
                 .environmentObject(authManager)
                 .tabItem {
                     Image(systemName: "fork.knife")
