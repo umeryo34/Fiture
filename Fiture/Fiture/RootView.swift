@@ -8,32 +8,22 @@
 import SwiftUI
 
 struct RootView: View {
-    @StateObject private var goalManager = GoalManager()
     @EnvironmentObject var authManager: AuthManager
     
     var body: some View {
         TabView {
             HomeView()
                 .environmentObject(authManager)
-                .environmentObject(goalManager)
                 .tabItem {
                     Image(systemName: "house.fill")
-                    Text("ホーム")
+                    Text("Food")
                 }
             
-            TargetView()
-                .environmentObject(goalManager)
+            RunView()
                 .environmentObject(authManager)
                 .tabItem {
-                    Image(systemName: "target")
-                    Text("目標")
-                }
-            
-            ProgressView()
-                .environmentObject(authManager)
-                .tabItem {
-                    Image(systemName: "chart.bar.fill")
-                    Text("記録")
+                    Image(systemName: "figure.run")
+                    Text("Run")
                 }
             
             TrainingBodyView()
@@ -41,6 +31,13 @@ struct RootView: View {
                 .tabItem {
                     Image(systemName: "figure.strengthtraining.traditional")
                     Text("筋トレ")
+                }
+            
+            ProgressView()
+                .environmentObject(authManager)
+                .tabItem {
+                    Image(systemName: "chart.bar.fill")
+                    Text("記録")
                 }
             
             UserView()

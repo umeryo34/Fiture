@@ -275,6 +275,9 @@ struct RunMapView: View {
                     date: runTarget.date
                 )
                 
+                // Run目標更新を通知
+                NotificationCenter.default.post(name: .init("RunTargetDidUpdate"), object: nil)
+                
                 await MainActor.run {
                     isLoading = false
                     dismiss()
