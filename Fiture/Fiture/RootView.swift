@@ -15,7 +15,7 @@ struct RootView: View {
             HomeView()
                 .environmentObject(authManager)
                 .tabItem {
-                    Image(systemName: "house.fill")
+                    Image(systemName: "fork.knife")
                     Text("Food")
                 }
             
@@ -46,23 +46,6 @@ struct RootView: View {
                     Image(systemName: "person.fill")
                     Text("ユーザー")
                 }
-        }
-    }
-}
-
-struct RecordView: View {
-    var body: some View {
-        VStack {
-            Image(systemName: "chart.bar.fill")
-                .font(.system(size: 80))
-                .foregroundColor(.green)
-                .padding()
-            Text("記録")
-                .font(.title2)
-                .fontWeight(.semibold)
-            Text("データを可視化します")
-                .font(.subheadline)
-                .foregroundColor(.gray)
         }
     }
 }
