@@ -13,6 +13,9 @@ struct CaloriesEntry: Codable, Identifiable {
     let date: Date
     let foodName: String
     let calories: Double
+    let protein: Double?
+    let fat: Double?
+    let carbs: Double?
     let createdAt: Date
     
     enum CodingKeys: String, CodingKey {
@@ -21,16 +24,22 @@ struct CaloriesEntry: Codable, Identifiable {
         case date
         case foodName = "food_name"
         case calories
+        case protein
+        case fat
+        case carbs
         case createdAt = "created_at"
     }
     
     // 通常のイニシャライザー（Previewやテスト用）
-    init(id: Int, userId: UUID, date: Date, foodName: String, calories: Double, createdAt: Date) {
+    init(id: Int, userId: UUID, date: Date, foodName: String, calories: Double, protein: Double? = nil, fat: Double? = nil, carbs: Double? = nil, createdAt: Date) {
         self.id = id
         self.userId = userId
         self.date = date
         self.foodName = foodName
         self.calories = calories
+        self.protein = protein
+        self.fat = fat
+        self.carbs = carbs
         self.createdAt = createdAt
     }
     
@@ -42,6 +51,9 @@ struct CaloriesEntry: Codable, Identifiable {
         userId = try container.decode(UUID.self, forKey: .userId)
         foodName = try container.decode(String.self, forKey: .foodName)
         calories = try container.decode(Double.self, forKey: .calories)
+        protein = try container.decodeIfPresent(Double.self, forKey: .protein)
+        fat = try container.decodeIfPresent(Double.self, forKey: .fat)
+        carbs = try container.decodeIfPresent(Double.self, forKey: .carbs)
         
         // created_at は ISO8601 タイムスタンプ
         let iso8601Formatter = ISO8601DateFormatter()
