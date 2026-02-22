@@ -364,21 +364,6 @@ struct InteractiveBodyFrontView: View {
     }
 }
 
-// 側面ビュー
-struct BodySideView: View {
-    let centerX: CGFloat
-    let height: CGFloat
-    let scale: CGFloat
-    
-    var body: some View {
-        ZStack {
-            BodySilhouetteSide(centerX: centerX, height: height, scale: scale)
-                .fill(Color.blue.opacity(0.2))
-                .stroke(Color.blue.opacity(0.5), lineWidth: 2)
-        }
-    }
-}
-
 // 背面ビュー（タップ可能）
 struct InteractiveBodyBackView: View {
     let centerX: CGFloat
@@ -477,70 +462,6 @@ struct MuscleButton: View {
                 .frame(width: size.width, height: size.height)
         }
         .position(position)
-    }
-}
-
-// 側面シルエット
-struct BodySilhouetteSide: Shape {
-    let centerX: CGFloat
-    let height: CGFloat
-    let scale: CGFloat
-    
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let h = height
-        
-        // 頭（側面）
-        let headWidth = 45 * scale
-        let headHeight = 60 * scale
-        path.addEllipse(in: CGRect(
-            x: centerX - headWidth / 2,
-            y: h * 0.05,
-            width: headWidth,
-            height: headHeight
-        ))
-        
-        // 首
-        let neckWidth = 20 * scale
-        let neckHeight = 30 * scale
-        path.addRect(CGRect(
-            x: centerX - neckWidth / 2,
-            y: h * 0.12,
-            width: neckWidth,
-            height: neckHeight
-        ))
-        
-        // 胴体（側面）
-        let torsoWidth = 50 * scale
-        let torsoHeight = 180 * scale
-        path.addRect(CGRect(
-            x: centerX - torsoWidth / 2,
-            y: h * 0.18,
-            width: torsoWidth,
-            height: torsoHeight
-        ))
-        
-        // 腕（側面）
-        let armWidth = 25 * scale
-        let armHeight = 150 * scale
-        path.addRect(CGRect(
-            x: centerX - torsoWidth / 2 - armWidth * 0.3,
-            y: h * 0.2,
-            width: armWidth,
-            height: armHeight
-        ))
-        
-        // 足（側面）
-        let legWidth = 35 * scale
-        let legHeight = 190 * scale
-        path.addRect(CGRect(
-            x: centerX - legWidth / 2,
-            y: h * 0.18 + torsoHeight,
-            width: legWidth,
-            height: legHeight
-        ))
-        
-        return path
     }
 }
 

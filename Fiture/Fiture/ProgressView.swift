@@ -18,17 +18,6 @@ struct ProgressView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                // ヘッダー
-                VStack(spacing: 8) {
-                    Text("グラフで分析")
-                        .font(.title)
-                        .fontWeight(.bold)
-                        .padding(.top, 20)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.bottom, 10)
-                
-                // 体重グラフ
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Image("weight")
@@ -103,6 +92,7 @@ struct ProgressView: View {
                 
                 Spacer()
             }
+            .padding(.top, 20)
         }
         .sheet(isPresented: $showingWeightSetting) {
             WeightSettingView()
