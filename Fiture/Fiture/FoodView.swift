@@ -1,5 +1,5 @@
 //
-//  HomeView.swift
+//  FoodView.swift
 //  Fiture
 //
 //  Created by 梅澤遼 on 2025/10/27.
@@ -8,12 +8,12 @@
 import SwiftUI
 import Combine
 
-struct HomeView: View {
+struct FoodView: View {
     @EnvironmentObject var authManager: AuthManager
     @StateObject private var viewModel = HomeViewModel()
     
     var body: some View {
-        HomeViewContent(viewModel: viewModel)
+        FoodViewContent(viewModel: viewModel)
             .environmentObject(authManager)
             .onAppear {
                 viewModel.setAuthManager(authManager)
@@ -21,7 +21,7 @@ struct HomeView: View {
     }
 }
 
-private struct HomeViewContent: View {
+private struct FoodViewContent: View {
     @EnvironmentObject var authManager: AuthManager
     @ObservedObject var viewModel: HomeViewModel
     
@@ -107,7 +107,7 @@ private struct HomeViewContent: View {
                             .foregroundColor(.white)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
-                            .background(Color.green)
+                            .background(Color.red)
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                         }
                         
@@ -151,7 +151,7 @@ private struct HomeViewContent: View {
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(Color.green)
+                            .background(Color.red)
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
                         .padding(.horizontal, 20)
@@ -306,7 +306,7 @@ private struct HomeViewContent: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .caloriesDataDidUpdate)) { _ in
             // カロリーデータが更新された時に再取得（選択された日付のデータ）
-            print("HomeView: カロリーデータ更新通知を受信")
+            print("FoodView: カロリーデータ更新通知を受信")
             Task {
                 await viewModel.fetchCaloriesDataForDate(viewModel.selectedDate)
             }
@@ -442,5 +442,5 @@ struct CaloriesTargetSettingView: View {
 
 
 #Preview {
-    HomeView()
+    FoodView()
 }

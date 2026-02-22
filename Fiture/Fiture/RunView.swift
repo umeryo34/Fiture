@@ -60,7 +60,7 @@ struct RunView: View {
                                     Text("\(String(format: "%.0f", runTarget.progressPercentage))%")
                                         .font(.title2)
                                         .fontWeight(.bold)
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(.red)
                                     
                                     Text("進捗")
                                         .font(.caption)
@@ -77,7 +77,7 @@ struct RunView: View {
                                         .cornerRadius(4)
                                     
                                     Rectangle()
-                                        .fill(Color.blue)
+                                        .fill(Color.red)
                                         .frame(width: geometry.size.width * (runTarget.progressPercentage / 100.0), height: 8)
                                         .cornerRadius(4)
                                 }
@@ -98,7 +98,7 @@ struct RunView: View {
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 10)
-                                .background(Color.blue)
+                                .background(Color.red)
                                 .clipShape(RoundedRectangle(cornerRadius: 8))
                             }
                         }
@@ -139,7 +139,7 @@ struct RunView: View {
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(Color.blue)
+                            .background(Color.red)
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
                         .padding(.horizontal, 20)

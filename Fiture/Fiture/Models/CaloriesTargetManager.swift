@@ -47,18 +47,24 @@ class CaloriesTargetManager: ObservableObject {
     }
     
     // 食事を追加
-    func addCaloriesEntry(userId: UUID, foodName: String, calories: Double, date: Date = Date()) async throws {
+    func addCaloriesEntry(userId: UUID, foodName: String, calories: Double, protein: Double? = nil, fat: Double? = nil, carbs: Double? = nil, date: Date = Date()) async throws {
         struct CaloriesEntryInsert: Encodable {
             let userId: String
             let date: String
             let foodName: String
             let calories: Double
+            let protein: Double?
+            let fat: Double?
+            let carbs: Double?
             
             enum CodingKeys: String, CodingKey {
                 case userId = "user_id"
                 case date
                 case foodName = "food_name"
                 case calories
+                case protein
+                case fat
+                case carbs
             }
         }
         
@@ -71,7 +77,10 @@ class CaloriesTargetManager: ObservableObject {
             userId: userId.uuidString.lowercased(),
             date: dateString,
             foodName: foodName,
-            calories: calories
+            calories: calories,
+            protein: protein,
+            fat: fat,
+            carbs: carbs
         )
         
         try await SupabaseManager.shared.client

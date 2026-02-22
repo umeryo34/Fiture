@@ -58,7 +58,7 @@ struct ProgressView: View {
                             VStack(spacing: 12) {
                                 Image(systemName: "plus.circle.fill")
                                     .font(.system(size: 50))
-                                    .foregroundColor(.purple)
+                                    .foregroundColor(.red)
                                 
                                 Text("今日の体重を追加")
                                     .font(.headline)
