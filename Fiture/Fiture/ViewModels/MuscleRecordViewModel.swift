@@ -77,11 +77,12 @@ class MuscleRecordViewModel: ObservableObject {
         }
     }
     
-    func saveRecord() async {
+    @discardableResult
+    func saveRecord() async -> Bool {
         guard let userId = authManager?.currentUser?.id else {
             errorMessage = "ユーザー情報が取得できません"
             showError = true
-            return
+            return false
         }
         
         // 有効なセットをフィルタリング（腹の場合は回数のみ、それ以外は重量と回数）
@@ -95,7 +96,7 @@ class MuscleRecordViewModel: ObservableObject {
         guard !validSets.isEmpty else {
             errorMessage = "少なくとも1セットの記録が必要です"
             showError = true
-            return
+            return false
         }
         
         isLoading = true
@@ -141,10 +142,12 @@ class MuscleRecordViewModel: ObservableObject {
             }
             
             isLoading = false
+            return true
         } catch {
             isLoading = false
             showError = true
             errorMessage = "記録の保存に失敗しました: \(error.localizedDescription)"
+            return false
         }
     }
 }

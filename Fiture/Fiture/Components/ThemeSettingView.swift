@@ -105,6 +105,8 @@ struct ThemeOptionRow: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 15)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
         }
         .buttonStyle(PlainButtonStyle())
     }
