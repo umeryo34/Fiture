@@ -144,27 +144,12 @@ struct CaloriesSearchView: View {
             do {
                 let endDate = Date()
                 let startDate = Calendar.current.date(byAdding: .day, value: -searchDateRange, to: endDate) ?? endDate
-                
-                let dateFormatter = DateFormatter()
-                dateFormatter.dateFormat = "yyyy-MM-dd"
-                dateFormatter.timeZone = TimeZone.current
-                let startDateString = dateFormatter.string(from: startDate)
-                let endDateString = dateFormatter.string(from: endDate)
-                
-                let userIdString = userId.uuidString.lowercased()
-                
-                // 食べ物名で検索（部分一致）
-                let response: [CaloriesEntry] = try await SupabaseManager.shared.client
-                    .from("calories_entries")
-                    .select()
-                    .eq("user_id", value: userIdString)
-                    .gte("date", value: startDateString)
-                    .lte("date", value: endDateString)
-                    .ilike("food_name", pattern: "%\(searchText)%")
-                    .order("date", ascending: false)
-                    .order("created_at", ascending: false)
-                    .execute()
-                    .value
+                let response = LocalDataStore.shared.searchCaloriesEntries(
+                    userId: userId,
+                    keyword: searchText,
+                    startDate: startDate,
+                    endDate: endDate
+                )
                 
                 await MainActor.run {
                     searchResults = response

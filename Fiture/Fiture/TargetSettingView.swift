@@ -7,234 +7,392 @@
 
 import SwiftUI
 
-// MARK: - モデル（端末内保存）
-
-enum FitnessGender: String, CaseIterable, Codable {
-    case male = "男性"
-    case female = "女性"
-    case other = "その他"
-    case preferNot = "答えたくない"
-}
-
-enum FitnessBodyGoal: String, CaseIterable, Codable {
-    case lose = "減量"
-    case maintain = "現状維持"
-    case gain = "増量"
-}
-
-enum FitnessActivityLevel: String, CaseIterable, Codable {
-    case sedentary = "ほとんど運動しない"
-    case light = "軽い運動（週1〜2回）"
-    case moderate = "中程度（週3〜4回）"
-    case active = "活発（ほぼ毎日）"
-}
-
-struct FitnessTargetProfile: Codable, Equatable {
-    var ageYears: Int?
-    var gender: FitnessGender?
-    var bodyGoal: FitnessBodyGoal?
-    var activityLevel: FitnessActivityLevel?
-}
-
-private enum FitnessProfileStorage {
-    private static let encoder = JSONEncoder()
-    private static let decoder = JSONDecoder()
-    
-    private static func storageKey(userId: UUID?) -> String {
-        guard let userId else { return "fiture_fitness_profile_guest" }
-        return "fiture_fitness_profile_\(userId.uuidString.lowercased())"
-    }
-    
-    static func load(userId: UUID?) -> FitnessTargetProfile {
-        let key = storageKey(userId: userId)
-        guard let data = UserDefaults.standard.data(forKey: key),
-              let profile = try? decoder.decode(FitnessTargetProfile.self, from: data) else {
-            return FitnessTargetProfile()
-        }
-        return profile
-    }
-    
-    static func save(_ profile: FitnessTargetProfile, userId: UUID?) {
-        let key = storageKey(userId: userId)
-        guard let data = try? encoder.encode(profile) else { return }
-        UserDefaults.standard.set(data, forKey: key)
-    }
-}
-
 // MARK: - View
 
 struct TargetSettingView: View {
     @EnvironmentObject var authManager: AuthManager
     @Environment(\.dismiss) private var dismiss
-    
-    @State private var ageYears: Int = 0
+    let allowsManualDismiss: Bool
+    private let onCompleted: (() -> Void)?
+
+    @State private var birthDate: Date = Calendar.current.date(byAdding: .year, value: -25, to: Date()) ?? Date()
+    @State private var heightCm: Double?
+    @State private var weightKg: Double?
     @State private var gender: FitnessGender?
     @State private var bodyGoal: FitnessBodyGoal?
     @State private var activityLevel: FitnessActivityLevel?
+    @State private var currentStep: Step = .birthDate
     @State private var didLoad = false
-    @State private var viewportHeight: CGFloat = 0
-    
+    @State private var heightPickerCm = 170
+    @State private var weightTenthKg = 600
+
+    init(allowsManualDismiss: Bool = true, onCompleted: (() -> Void)? = nil) {
+        self.allowsManualDismiss = allowsManualDismiss
+        self.onCompleted = onCompleted
+    }
+
     var body: some View {
         NavigationView {
-            GeometryReader { geometry in
-                let contentWidth = min(max(geometry.size.width - 32, 280), 560)
-                let sidePadding = max((geometry.size.width - contentWidth) / 2, 16)
-                let availableHeight = max(viewportHeight > 0 ? viewportHeight : geometry.size.height, 1)
-                let sectionMinHeight = max(88, availableHeight * 0.16)
-                let saveButtonMinHeight = max(56, availableHeight * 0.09)
-                let verticalSpacing = max(12, availableHeight * 0.02)
-                let headerTopSpacing = max(16, availableHeight * 0.05)
-                
-                ScrollView {
-                    VStack(spacing: verticalSpacing) {
-                        VStack(alignment: .leading, spacing: verticalSpacing) {
-                            VStack(alignment: .leading, spacing: 12) {
-                                sectionTitle("年齢")
-                                Menu {
-                                    Button("未設定") { ageYears = 0 }
-                                    ForEach(1...100, id: \.self) { y in
-                                        Button("\(y)歳") { ageYears = y }
-                                    }
-                                } label: {
-                                    selectionMenuLabel(ageYears == 0 ? "選択してください" : "\(ageYears)歳")
-                                }
-                            }
-                            .frame(minHeight: sectionMinHeight, alignment: .topLeading)
-                            
-                            VStack(alignment: .leading, spacing: 12) {
-                                sectionTitle("性別")
-                                Menu {
-                                    Button("未設定") { gender = nil }
-                                    ForEach(FitnessGender.allCases, id: \.self) { g in
-                                        Button(g.rawValue) { gender = g }
-                                    }
-                                } label: {
-                                    selectionMenuLabel(gender?.rawValue ?? "選択してください")
-                                }
-                            }
-                            .frame(minHeight: sectionMinHeight, alignment: .topLeading)
-                            
-                            VStack(alignment: .leading, spacing: 12) {
-                                sectionTitle("目標")
-                                Menu {
-                                    Button("未設定") { bodyGoal = nil }
-                                    ForEach(FitnessBodyGoal.allCases, id: \.self) { goal in
-                                        Button(goal.rawValue) { bodyGoal = goal }
-                                    }
-                                } label: {
-                                    selectionMenuLabel(bodyGoal?.rawValue ?? "選択してください")
-                                }
-                            }
-                            .frame(minHeight: sectionMinHeight, alignment: .topLeading)
-                            
-                            VStack(alignment: .leading, spacing: 12) {
-                                sectionTitle("現在の運動状況")
-                                Menu {
-                                    Button("未設定") { activityLevel = nil }
-                                    ForEach(FitnessActivityLevel.allCases, id: \.self) { level in
-                                        Button(level.rawValue) { activityLevel = level }
-                                    }
-                                } label: {
-                                    selectionMenuLabel(activityLevel?.rawValue ?? "選択してください")
-                                }
-                            }
-                            .frame(minHeight: sectionMinHeight, alignment: .topLeading)
-                        }
-                        .padding(.top, headerTopSpacing)
-                        .padding(.horizontal, sidePadding)
-                        
-                        Button {
-                            saveProfile()
-                            dismiss()
-                        } label: {
-                            Text("保存")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(14)
-                                .background(Color.red)
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
-                        }
-                        .frame(minHeight: saveButtonMinHeight)
-                        .padding(.horizontal, sidePadding)
-                        .padding(.bottom, 36)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .top)
+            VStack(spacing: 20) {
+                stepHeader
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+
+                VStack(alignment: .leading, spacing: 16) {
+                    Text(currentStep.title)
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    Text(currentStep.description)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    stepContent
                 }
-                .background(
-                    GeometryReader { proxy in
-                        Color.clear.preference(
-                            key: ScrollViewportHeightPreferenceKey.self,
-                            value: proxy.size.height
-                        )
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .padding(20)
+                .background(Color(.systemGray6))
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .padding(.horizontal, 20)
+
+                Spacer()
+
+                HStack(spacing: 12) {
+                    Button("戻る") {
+                        goToPreviousStep()
                     }
-                )
-                .onPreferenceChange(ScrollViewportHeightPreferenceKey.self) { newHeight in
-                    viewportHeight = newHeight
+                    .font(.headline)
+                    .foregroundColor(canGoPrevious ? .primary : .secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color(.systemGray5))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .disabled(!canGoPrevious)
+
+                    Button(isLastStep ? "保存" : "次へ") {
+                        handlePrimaryAction()
+                    }
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(canProceedCurrentStep ? Color.red : Color.gray)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .disabled(!canProceedCurrentStep)
                 }
-                .navigationTitle("目標・プロフィール")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
+                .padding(.horizontal, 20)
+                .padding(.bottom, 24)
+            }
+            .navigationTitle("基本情報")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if allowsManualDismiss {
                     ToolbarItem(placement: .navigationBarLeading) {
                         Button("閉じる") {
                             dismiss()
                         }
                     }
                 }
-                .onAppear {
-                    guard !didLoad else { return }
-                    didLoad = true
-                    let p = FitnessProfileStorage.load(userId: authManager.currentUser?.id)
-                    ageYears = p.ageYears ?? 0
-                    gender = p.gender
-                    bodyGoal = p.bodyGoal
-                    activityLevel = p.activityLevel
+            }
+            .onAppear {
+                guard !didLoad else { return }
+                didLoad = true
+                let p = FitnessProfileStorage.load(userId: authManager.currentUser?.id)
+                birthDate = p.birthDate ?? birthDate
+                heightCm = p.heightCm
+                weightKg = p.weightKg
+                gender = p.gender
+                bodyGoal = p.bodyGoal
+                activityLevel = p.activityLevel
+                currentStep = firstIncompleteStep()
+                syncPickersFromProfile()
+            }
+        }
+    }
+
+    private var stepHeader: some View {
+        HStack(spacing: 8) {
+            ForEach(Step.allCases, id: \.self) { step in
+                Capsule()
+                    .fill(step.rawValue <= currentStep.rawValue ? Color.red : Color(.systemGray4))
+                    .frame(height: 6)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var stepContent: some View {
+        switch currentStep {
+        case .birthDate:
+            DatePicker(
+                "誕生日",
+                selection: $birthDate,
+                in: ...Date(),
+                displayedComponents: .date
+            )
+            .datePickerStyle(.wheel)
+            .labelsHidden()
+
+            if let age = computedAge(from: birthDate) {
+                Text("現在 \(age) 歳")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+            }
+        case .gender:
+            optionButtons(
+                options: FitnessGender.allCases.map(\.rawValue),
+                selected: gender?.rawValue
+            ) { value in
+                gender = FitnessGender(rawValue: value)
+            }
+        case .bodyMetrics:
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 0) {
+                    VStack(spacing: 4) {
+                        Text("身長")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Picker("身長", selection: $heightPickerCm) {
+                            ForEach(Self.heightCmRange, id: \.self) { cm in
+                                Text("\(cm) cm").tag(cm)
+                            }
+                        }
+                        .pickerStyle(.wheel)
+                        .frame(maxWidth: .infinity)
+                    }
+                    VStack(spacing: 4) {
+                        Text("体重")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Picker("体重", selection: $weightTenthKg) {
+                            ForEach(Self.weightTenthRange, id: \.self) { tenth in
+                                Text(String(format: "%.1f kg", Double(tenth) / 10)).tag(tenth)
+                            }
+                        }
+                        .pickerStyle(.wheel)
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+                .frame(height: 180)
+
+                if let bmr = estimatedProfileWithPickers.bmr {
+                    Text("推定BMR: \(Int(bmr.rounded())) kcal")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+            }
+        case .bodyGoal:
+            optionButtons(
+                options: FitnessBodyGoal.allCases.map(\.rawValue),
+                selected: bodyGoal?.rawValue
+            ) { value in
+                bodyGoal = FitnessBodyGoal(rawValue: value)
+            }
+        case .activityLevel:
+            VStack(spacing: 10) {
+                ForEach(FitnessActivityLevel.allCases, id: \.self) { level in
+                    Button {
+                        activityLevel = level
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(level.rawValue)
+                                    .foregroundColor(.primary)
+                                Text("\(level.descriptionText) / 係数 \(String(format: "%.3f", level.coefficient))")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            if activityLevel == level {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(.red)
+                            }
+                        }
+                        .padding(14)
+                        .background(Color.white.opacity(0.7))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                if let tdee = estimatedProfile.tdee {
+                    Text("推定TDEE: \(Int(tdee.rounded())) kcal")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
                 }
             }
         }
     }
 
-    private func sectionTitle(_ text: String) -> some View {
-        Text(text)
-            .font(.headline)
-            .foregroundColor(.primary)
-    }
-    
-    private func selectionMenuLabel(_ text: String) -> some View {
-        HStack {
-            Text(text)
-                .font(.body)
-                .foregroundColor(.primary)
-                .multilineTextAlignment(.leading)
-                .lineLimit(2)
-            Spacer(minLength: 8)
-            Image(systemName: "chevron.down")
-                .font(.caption)
-                .foregroundColor(.secondary)
+    private func optionButtons(options: [String], selected: String?, onSelect: @escaping (String) -> Void) -> some View {
+        VStack(spacing: 10) {
+            ForEach(options, id: \.self) { value in
+                Button {
+                    onSelect(value)
+                } label: {
+                    HStack {
+                        Text(value)
+                            .foregroundColor(.primary)
+                        Spacer()
+                        if selected == value {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.red)
+                        }
+                    }
+                    .padding(14)
+                    .background(Color.white.opacity(0.7))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
+                .buttonStyle(.plain)
+            }
         }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.systemGray6))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
-        .contentShape(Rectangle())
     }
-    
+
+    private var canGoPrevious: Bool {
+        currentStep.rawValue > 0
+    }
+
+    private var isLastStep: Bool {
+        currentStep == .activityLevel
+    }
+
+    private var canProceedCurrentStep: Bool {
+        switch currentStep {
+        case .birthDate:
+            return computedAge(from: birthDate) != nil
+        case .gender:
+            return gender != nil
+        case .bodyMetrics:
+            return true
+        case .bodyGoal:
+            return bodyGoal != nil
+        case .activityLevel:
+            return activityLevel != nil
+        }
+    }
+
+    private func goToPreviousStep() {
+        guard canGoPrevious else { return }
+        currentStep = Step(rawValue: currentStep.rawValue - 1) ?? .birthDate
+        if currentStep == .bodyMetrics {
+            syncPickersFromProfile()
+        }
+    }
+
+    private func handlePrimaryAction() {
+        guard canProceedCurrentStep else { return }
+        if currentStep == .bodyMetrics {
+            heightCm = Double(heightPickerCm)
+            weightKg = Double(weightTenthKg) / 10
+        }
+        if isLastStep {
+            saveProfile()
+            if let onCompleted {
+                onCompleted()
+            } else {
+                dismiss()
+            }
+            return
+        }
+        currentStep = Step(rawValue: currentStep.rawValue + 1) ?? currentStep
+    }
+
+    private func firstIncompleteStep() -> Step {
+        if computedAge(from: birthDate) == nil { return .birthDate }
+        if gender == nil { return .gender }
+        if heightCm == nil || weightKg == nil { return .bodyMetrics }
+        if bodyGoal == nil { return .bodyGoal }
+        if activityLevel == nil { return .activityLevel }
+        return .activityLevel
+    }
+
+    private var estimatedProfileWithPickers: FitnessTargetProfile {
+        FitnessTargetProfile(
+            birthDate: birthDate,
+            heightCm: Double(heightPickerCm),
+            weightKg: Double(weightTenthKg) / 10,
+            gender: gender,
+            bodyGoal: bodyGoal,
+            activityLevel: activityLevel
+        )
+    }
+
+    private var estimatedProfile: FitnessTargetProfile {
+        FitnessTargetProfile(
+            birthDate: birthDate,
+            heightCm: heightCm,
+            weightKg: weightKg,
+            gender: gender,
+            bodyGoal: bodyGoal,
+            activityLevel: activityLevel
+        )
+    }
+
+    private func computedAge(from date: Date) -> Int? {
+        let years = Calendar.current.dateComponents([.year], from: date, to: Date()).year ?? -1
+        return years >= 0 ? years : nil
+    }
+
     private func saveProfile() {
         let profile = FitnessTargetProfile(
-            ageYears: ageYears == 0 ? nil : ageYears,
+            birthDate: birthDate,
+            heightCm: heightCm,
+            weightKg: weightKg,
             gender: gender,
             bodyGoal: bodyGoal,
             activityLevel: activityLevel
         )
         FitnessProfileStorage.save(profile, userId: authManager.currentUser?.id)
-    }
-}
 
-private struct ScrollViewportHeightPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = max(value, nextValue())
+        if let userId = authManager.currentUser?.id,
+           let tdee = profile.tdee {
+            let targetKcal = tdee.rounded()
+            _ = LocalDataStore.shared.upsertCaloriesTarget(userId: userId, date: Date(), target: targetKcal)
+            NotificationCenter.default.post(name: .caloriesDataDidUpdate, object: nil)
+        }
+    }
+
+    private func syncPickersFromProfile() {
+        if let h = heightCm {
+            heightPickerCm = min(250, max(100, Int(h.rounded())))
+        } else {
+            heightPickerCm = 170
+        }
+        if let w = weightKg {
+            let tenth = Int((w * 10).rounded())
+            weightTenthKg = min(3000, max(200, tenth))
+        } else {
+            weightTenthKg = 600
+        }
+    }
+
+    private static let heightCmRange = Array(100...250)
+    private static let weightTenthRange: [Int] = Array(stride(from: 200, through: 3000, by: 1))
+
+    private enum Step: Int, CaseIterable {
+        case birthDate
+        case gender
+        case bodyMetrics
+        case bodyGoal
+        case activityLevel
+
+        var title: String {
+            switch self {
+            case .birthDate: return "誕生日を教えてください"
+            case .gender: return "性別を選択してください"
+            case .bodyMetrics: return "身長と体重を入力してください"
+            case .bodyGoal: return "目標を選択してください"
+            case .activityLevel: return "普段の運動状況を選択してください"
+            }
+        }
+
+        var description: String {
+            switch self {
+            case .birthDate: return "年齢は誕生日から自動で計算します。"
+            case .gender: return "あとで変更できます。"
+            case .bodyMetrics: return "BMR/TDEEの計算に使います。"
+            case .bodyGoal: return "あなたに合った提案に使います。"
+            case .activityLevel: return "活動係数を使ってTDEEを計算します。"
+            }
+        }
     }
 }
 

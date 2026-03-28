@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import Supabase
 
 extension Notification.Name {
     static let caloriesDataDidUpdate = Notification.Name("caloriesDataDidUpdate")
@@ -24,69 +23,23 @@ class CaloriesTargetManager: ObservableObject {
     
     // 食事記録を取得
     func fetchCaloriesEntries(userId: UUID, date: Date = Date()) async throws {
-        let userIdString = userId.uuidString.lowercased()
-        
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        dateFormatter.timeZone = TimeZone.current
-        let dateString = dateFormatter.string(from: date)
-        
-        let response: [CaloriesEntry] = try await SupabaseManager.shared.client
-            .from("calories_entries")
-            .select()
-            .eq("user_id", value: userIdString)
-            .eq("date", value: dateString)
-            .order("created_at", ascending: false)
-            .execute()
-            .value
-        
         await MainActor.run {
-            caloriesEntries = response
+            caloriesEntries = LocalDataStore.shared.caloriesEntries(userId: userId, date: date)
             selectedDate = date
         }
     }
     
     // 食事を追加
     func addCaloriesEntry(userId: UUID, foodName: String, calories: Double, protein: Double? = nil, fat: Double? = nil, carbs: Double? = nil, date: Date = Date()) async throws {
-        struct CaloriesEntryInsert: Encodable {
-            let userId: String
-            let date: String
-            let foodName: String
-            let calories: Double
-            let protein: Double?
-            let fat: Double?
-            let carbs: Double?
-            
-            enum CodingKeys: String, CodingKey {
-                case userId = "user_id"
-                case date
-                case foodName = "food_name"
-                case calories
-                case protein
-                case fat
-                case carbs
-            }
-        }
-        
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        dateFormatter.timeZone = TimeZone.current
-        let dateString = dateFormatter.string(from: date)
-        
-        let data = CaloriesEntryInsert(
-            userId: userId.uuidString.lowercased(),
-            date: dateString,
+        _ = LocalDataStore.shared.addCaloriesEntry(
+            userId: userId,
+            date: date,
             foodName: foodName,
             calories: calories,
             protein: protein,
             fat: fat,
             carbs: carbs
         )
-        
-        try await SupabaseManager.shared.client
-            .from("calories_entries")
-            .insert(data)
-            .execute()
         
         // 再取得
         try await fetchCaloriesEntries(userId: userId, date: date)
@@ -99,11 +52,7 @@ class CaloriesTargetManager: ObservableObject {
     
     // 食事を削除
     func deleteCaloriesEntry(entryId: Int, userId: UUID, date: Date? = nil) async throws {
-        try await SupabaseManager.shared.client
-            .from("calories_entries")
-            .delete()
-            .eq("id", value: entryId)
-            .execute()
+        LocalDataStore.shared.deleteCaloriesEntry(entryId: entryId, userId: userId)
         
         // 再取得
         let targetDate = date ?? selectedDate
@@ -118,114 +67,29 @@ class CaloriesTargetManager: ObservableObject {
     
     // カロリー目標を取得
     func fetchCaloriesTarget(userId: UUID, date: Date = Date()) async throws {
-        let userIdString = userId.uuidString.lowercased()
-        
-        // ローカルタイムゾーンで日付を文字列化
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        dateFormatter.timeZone = TimeZone.current
-        let dateString = dateFormatter.string(from: date)
-        
-        let response: [CaloriesTarget] = try await SupabaseManager.shared.client
-            .from("targets_calories")
-            .select()
-            .eq("user_id", value: userIdString)
-            .eq("date", value: dateString)
-            .execute()
-            .value
-        
         await MainActor.run {
-            caloriesTarget = response.first
+            caloriesTarget = LocalDataStore.shared.caloriesTarget(userId: userId, date: date)
             selectedDate = date
         }
     }
     
     // カロリー目標を作成または更新
     func createOrUpdateCaloriesTarget(userId: UUID, target: Double, date: Date = Date()) async throws {
-        // まず既存レコードを確認
+        _ = LocalDataStore.shared.upsertCaloriesTarget(userId: userId, date: date, target: target)
         try await fetchCaloriesTarget(userId: userId, date: date)
-        
-        if caloriesTarget != nil {
-            // 既存レコードがあれば更新
-            try await updateCaloriesTarget(userId: userId, target: target, date: date)
-        } else {
-            // 新規作成
-            struct CaloriesTargetInsert: Encodable {
-                let userId: String
-                let date: String
-                let target: Double
-                
-                enum CodingKeys: String, CodingKey {
-                    case userId = "user_id"
-                    case date
-                    case target
-                }
-            }
-            
-            // ローカルタイムゾーンで日付を文字列化
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "yyyy-MM-dd"
-            dateFormatter.timeZone = TimeZone.current
-            let dateString = dateFormatter.string(from: date)
-            
-            let data = CaloriesTargetInsert(
-                userId: userId.uuidString.lowercased(),
-                date: dateString,
-                target: target
-            )
-            
-            try await SupabaseManager.shared.client
-                .from("targets_calories")
-                .insert(data)
-                .execute()
-            
-            // 再取得
-            try await fetchCaloriesTarget(userId: userId, date: date)
-        }
     }
     
     // カロリー目標を更新
     func updateCaloriesTarget(userId: UUID, target: Double, date: Date? = nil) async throws {
-        struct CaloriesTargetUpdate: Encodable {
-            let target: Double
-        }
-        
-        let data = CaloriesTargetUpdate(target: target)
         let targetDate = date ?? selectedDate
-        
-        // ローカルタイムゾーンで日付を文字列化
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        dateFormatter.timeZone = TimeZone.current
-        let dateString = dateFormatter.string(from: targetDate)
-        
-        try await SupabaseManager.shared.client
-            .from("targets_calories")
-            .update(data)
-            .eq("user_id", value: userId.uuidString.lowercased())
-            .eq("date", value: dateString)
-            .execute()
-        
-        // 再取得
+        _ = LocalDataStore.shared.upsertCaloriesTarget(userId: userId, date: targetDate, target: target)
         try await fetchCaloriesTarget(userId: userId, date: targetDate)
     }
     
     // カロリー目標を削除
     func deleteCaloriesTarget(userId: UUID, date: Date? = nil) async throws {
         let targetDate = date ?? selectedDate
-        
-        // ローカルタイムゾーンで日付を文字列化
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        dateFormatter.timeZone = TimeZone.current
-        let dateString = dateFormatter.string(from: targetDate)
-        
-        try await SupabaseManager.shared.client
-            .from("targets_calories")
-            .delete()
-            .eq("user_id", value: userId.uuidString.lowercased())
-            .eq("date", value: dateString)
-            .execute()
+        LocalDataStore.shared.deleteCaloriesTarget(userId: userId, date: targetDate)
         
         await MainActor.run {
             caloriesTarget = nil
@@ -234,47 +98,7 @@ class CaloriesTargetManager: ObservableObject {
     
     // 過去のカロリーデータを取得（日付ごとの合計）
     func fetchCaloriesHistory(userId: UUID, days: Int = 30) async throws -> [(date: Date, totalCalories: Double)] {
-        let userIdString = userId.uuidString.lowercased()
-        
-        // 開始日を計算
-        let endDate = Date()
-        let startDate = Calendar.current.date(byAdding: .day, value: -days, to: endDate) ?? endDate
-        
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        dateFormatter.timeZone = TimeZone.current
-        let startDateString = dateFormatter.string(from: startDate)
-        let endDateString = dateFormatter.string(from: endDate)
-        
-        // 指定期間のカロリー記録を取得
-        let response: [CaloriesEntry] = try await SupabaseManager.shared.client
-            .from("calories_entries")
-            .select()
-            .eq("user_id", value: userIdString)
-            .gte("date", value: startDateString)
-            .lte("date", value: endDateString)
-            .order("date", ascending: true)
-            .execute()
-            .value
-        
-        // 日付ごとにグループ化して合計を計算
-        var dailyTotals: [String: Double] = [:]
-        for entry in response {
-            let dateString = dateFormatter.string(from: entry.date)
-            dailyTotals[dateString, default: 0] += entry.calories
-        }
-        
-        // 日付順にソートして返す
-        var result: [(date: Date, totalCalories: Double)] = []
-        var currentDate = startDate
-        while currentDate <= endDate {
-            let dateString = dateFormatter.string(from: currentDate)
-            let total = dailyTotals[dateString] ?? 0
-            result.append((date: currentDate, totalCalories: total))
-            currentDate = Calendar.current.date(byAdding: .day, value: 1, to: currentDate) ?? currentDate
-        }
-        
-        return result
+        LocalDataStore.shared.caloriesHistory(userId: userId, days: days)
     }
 }
 
