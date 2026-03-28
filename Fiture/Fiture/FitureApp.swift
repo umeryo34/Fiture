@@ -23,13 +23,9 @@ struct FitureApp: App {
                             .foregroundColor(.secondary)
                             .padding(.top, 20)
                     }
-                } else if authManager.isAuthenticated {
-                    // 認証済み → メイン画面
-                    RootView()
-                        .environmentObject(authManager)
                 } else {
-                    // 未認証 → 登録画面
-                    SignUpView()
+                    // ログイン導線は一時停止し、メイン画面を常時表示
+                    RootView()
                         .environmentObject(authManager)
                 }
             }
