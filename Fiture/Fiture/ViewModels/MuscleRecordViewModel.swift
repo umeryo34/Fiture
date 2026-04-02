@@ -12,6 +12,8 @@ import SwiftUI
 class MuscleRecordViewModel: ObservableObject {
     @Published var exerciseType: String = ""
     @Published var sets: [TrainingSet] = [TrainingSet()]
+    @Published var savedRecords: [TrainingRecord] = []
+    @Published var isEditingExistingRecord: Bool = false
     @Published var isLoading = false
     @Published var showError = false
     @Published var errorMessage = ""
@@ -76,12 +78,62 @@ class MuscleRecordViewModel: ObservableObject {
             sets.remove(at: index)
         }
     }
+
+    /// 保存済みのセット（重量/回数）を読み込んでフォームに反映する
+    /// - 注意: 呼び出し側で `exerciseType` が確定している場合（タグ/定番ボタン押下など）に呼ぶ前提。
+    func loadSavedSets(exerciseType: String) async {
+        guard let userId = authManager?.currentUser?.id else { return }
+
+        let currentDate = trainingTargetManager.selectedDate
+
+        do {
+            if let record = try await trainingTargetManager.fetchTrainingRecord(
+                userId: userId,
+                date: currentDate,
+                exerciseType: exerciseType
+            ) {
+                let loadedSets = record.sets.map { TrainingSet(weight: $0.weight, reps: $0.reps) }
+                self.sets = loadedSets.isEmpty ? [TrainingSet()] : loadedSets
+                self.isEditingExistingRecord = true
+            } else {
+                self.sets = [TrainingSet()]
+                self.isEditingExistingRecord = false
+            }
+        } catch {
+            // 読み込み失敗時はフォームをそのままにする（UIは壊さない）
+        }
+    }
+
+    /// 選択した種目の過去レコード一覧を取得する（一覧表示用）
+    func loadSavedRecords(exerciseType: String) async {
+        guard let userId = authManager?.currentUser?.id else { return }
+
+        do {
+            self.savedRecords = try await trainingTargetManager.fetchTrainingRecords(
+                userId: userId,
+                exerciseType: exerciseType
+            )
+        } catch {
+            self.savedRecords = []
+        }
+    }
+
+    /// 既存レコードを読み込んで「変更」モードに切り替える
+    func applyRecord(_ record: TrainingRecord) {
+        // 編集対象の日付/種目を揃える
+        trainingTargetManager.selectedDate = record.date
+        exerciseType = record.exerciseType
+
+        sets = record.sets.map { TrainingSet(weight: $0.weight, reps: $0.reps) }
+        isEditingExistingRecord = true
+    }
     
-    func saveRecord() async {
+    @discardableResult
+    func saveRecord() async -> Bool {
         guard let userId = authManager?.currentUser?.id else {
             errorMessage = "ユーザー情報が取得できません"
             showError = true
-            return
+            return false
         }
         
         // 有効なセットをフィルタリング（腹の場合は回数のみ、それ以外は重量と回数）
@@ -95,7 +147,7 @@ class MuscleRecordViewModel: ObservableObject {
         guard !validSets.isEmpty else {
             errorMessage = "少なくとも1セットの記録が必要です"
             showError = true
-            return
+            return false
         }
         
         isLoading = true
@@ -139,12 +191,26 @@ class MuscleRecordViewModel: ObservableObject {
                     date: currentDate
                 )
             }
+
+            // セット単位（重量/回数）もローカルに保存
+            let setEntries = validSets.map { TrainingSetEntry(weight: $0.weight, reps: $0.reps) }
+            try await trainingTargetManager.upsertTrainingRecord(
+                userId: userId,
+                date: currentDate,
+                exerciseType: exerciseType,
+                sets: setEntries
+            )
+
+            // 画面遷移（dismiss）前提だが、次に開いたときに一覧がズレないよう最新化
+            await loadSavedRecords(exerciseType: exerciseType)
             
             isLoading = false
+            return true
         } catch {
             isLoading = false
             showError = true
             errorMessage = "記録の保存に失敗しました: \(error.localizedDescription)"
+            return false
         }
     }
 }

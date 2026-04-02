@@ -9,8 +9,26 @@ import SwiftUI
 
 struct RootView: View {
     @EnvironmentObject var authManager: AuthManager
+    @State private var fitnessProfileCompleted = false
     
     var body: some View {
+        Group {
+            if fitnessProfileCompleted {
+                mainTabView
+            } else {
+                TargetSettingView(allowsManualDismiss: false) {
+                    fitnessProfileCompleted = true
+                }
+                .environmentObject(authManager)
+            }
+        }
+        .task(id: authManager.currentUser?.id) {
+            let profile = FitnessProfileStorage.load(userId: authManager.currentUser?.id)
+            fitnessProfileCompleted = profile.isCompleted
+        }
+    }
+    
+    private var mainTabView: some View {
         TabView {
             FoodView()
                 .environmentObject(authManager)

@@ -125,6 +125,7 @@ struct ProgressView: View {
                     }
                 } catch {
                     print("今日の体重データ取得エラー: \(error)")
+                    print("今日の体重データ取得エラー: \(error)")
                     await MainActor.run {
                         hasTodayWeight = false
                     }

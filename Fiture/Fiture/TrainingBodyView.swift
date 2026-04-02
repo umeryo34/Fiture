@@ -726,16 +726,29 @@ struct TrainingSet: Identifiable {
 // 部位別筋トレ記録画面
 struct MuscleRecordView: View {
     let muscleType: InteractiveBodyModelView.MuscleType
-    let trainingTargetManager: TrainingTargetManager
+    @ObservedObject var trainingTargetManager: TrainingTargetManager
     @EnvironmentObject var authManager: AuthManager
     @Environment(\.dismiss) private var dismiss
     
     @StateObject private var viewModel: MuscleRecordViewModel
+    @State private var saveExerciseAsTag = false
+    @State private var showingTagManagement = false
     
     init(muscleType: InteractiveBodyModelView.MuscleType, trainingTargetManager: TrainingTargetManager) {
         self.muscleType = muscleType
-        self.trainingTargetManager = trainingTargetManager
+        self._trainingTargetManager = ObservedObject(wrappedValue: trainingTargetManager)
         _viewModel = StateObject(wrappedValue: MuscleRecordViewModel(muscleType: muscleType, trainingTargetManager: trainingTargetManager))
+    }
+
+    private var recordDateFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy年M月d日"
+        formatter.locale = Locale(identifier: "ja_JP")
+        return formatter
+    }
+
+    private func recordDateString(_ date: Date) -> String {
+        recordDateFormatter.string(from: date)
     }
     
     var body: some View {
@@ -759,24 +772,54 @@ struct MuscleRecordView: View {
                 
                 ScrollView {
                     VStack(spacing: 20) {
-                        // 種目名選択
-                        VStack(alignment: .leading, spacing: 8) {
+                        // 種目名（タグ・入力・定番）
+                        VStack(alignment: .leading, spacing: 12) {
                             Text("種目名")
                                 .font(.headline)
                                 .foregroundColor(.primary)
                             
+                            if !trainingTargetManager.trainingTags.isEmpty {
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 8) {
+                                        ForEach(trainingTargetManager.trainingTags) { tag in
+                                            Button {
+                                                let selectedExercise = tag.tagName
+                                                viewModel.exerciseType = selectedExercise
+                                                Task {
+                                                    await viewModel.loadSavedSets(exerciseType: selectedExercise)
+                                                    await viewModel.loadSavedRecords(exerciseType: selectedExercise)
+                                                }
+                                            } label: {
+                                                Text(tag.tagName)
+                                                    .font(.subheadline)
+                                                    .padding(.horizontal, 12)
+                                                    .padding(.vertical, 8)
+                                                    .background(Color(.systemGray5))
+                                                    .clipShape(Capsule())
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            TextField("種目名を入力", text: $viewModel.exerciseType)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                            
                             Menu {
                                 ForEach(viewModel.availableExercises, id: \.self) { exercise in
-                                    Button(action: {
+                                    Button(exercise) {
                                         viewModel.exerciseType = exercise
-                                    }) {
-                                        Text(exercise)
+                                        Task {
+                                            await viewModel.loadSavedSets(exerciseType: exercise)
+                                            await viewModel.loadSavedRecords(exerciseType: exercise)
+                                        }
                                     }
                                 }
                             } label: {
                                 HStack {
-                                    Text(viewModel.exerciseType.isEmpty ? "選択してください" : viewModel.exerciseType)
-                                        .foregroundColor(viewModel.exerciseType.isEmpty ? .secondary : .primary)
+                                    Text("定番種目から選ぶ")
+                                        .foregroundColor(.primary)
                                     Spacer()
                                     Image(systemName: "chevron.down")
                                         .font(.caption)
@@ -786,8 +829,62 @@ struct MuscleRecordView: View {
                                 .background(Color(.systemGray6))
                                 .cornerRadius(8)
                             }
+                            
+                            Toggle("この種目をタグとして保存", isOn: $saveExerciseAsTag)
+                            
+                            Button {
+                                showingTagManagement = true
+                            } label: {
+                                HStack {
+                                    Image(systemName: "tag")
+                                    Text("タグ管理")
+                                }
+                                .font(.subheadline)
+                                .foregroundColor(.red)
+                            }
+                            .buttonStyle(.plain)
                         }
                         .padding(.horizontal, 20)
+                        
+                        // 日付セレクタ（既存レコードの有無を切り替える）
+                        DateSelectorBar(selectedDate: $trainingTargetManager.selectedDate) { _ in
+                            let exercise = viewModel.exerciseType
+                            let trimmed = exercise.trimmingCharacters(in: .whitespacesAndNewlines)
+                            guard !trimmed.isEmpty else { return }
+                            Task {
+                                await viewModel.loadSavedSets(exerciseType: trimmed)
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                        
+                        // 過去の記録（行ごとに「変更」）
+                        if !viewModel.savedRecords.isEmpty,
+                           !viewModel.exerciseType.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("過去の記録")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+                                
+                                VStack(alignment: .leading, spacing: 8) {
+                                    ForEach(viewModel.savedRecords.prefix(10)) { record in
+                                        HStack {
+                                            Text(recordDateString(record.date))
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                            
+                                            Spacer()
+                                            
+                                            Button("変更") {
+                                                viewModel.applyRecord(record)
+                                            }
+                                            .buttonStyle(.borderedProminent)
+                                            .tint(.red)
+                                        }
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                        }
                         
                         // セット一覧
                         VStack(alignment: .leading, spacing: 12) {
@@ -845,8 +942,16 @@ struct MuscleRecordView: View {
                 // 保存ボタン
                 Button(action: {
                     Task {
-                        await viewModel.saveRecord()
-                        if !viewModel.showError {
+                        let ok = await viewModel.saveRecord()
+                        if ok {
+                            if saveExerciseAsTag,
+                               let userId = authManager.currentUser?.id,
+                               !viewModel.exerciseType.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                try? await trainingTargetManager.createTrainingTag(
+                                    userId: userId,
+                                    tagName: viewModel.exerciseType
+                                )
+                            }
                             dismiss()
                         }
                     }
@@ -857,7 +962,7 @@ struct MuscleRecordView: View {
                             .frame(maxWidth: .infinity)
                             .padding()
                     } else {
-                        Text("記録を保存")
+                        Text(viewModel.isEditingExistingRecord ? "変更を保存" : "記録を保存")
                             .font(.headline)
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -880,6 +985,14 @@ struct MuscleRecordView: View {
                     }
                 }
             }
+        }
+        .task(id: authManager.currentUser?.id) {
+            guard let userId = authManager.currentUser?.id else { return }
+            try? await trainingTargetManager.fetchTrainingTags(userId: userId)
+        }
+        .sheet(isPresented: $showingTagManagement) {
+            TrainingTagManagementView(trainingTargetManager: trainingTargetManager)
+                .environmentObject(authManager)
         }
         .onAppear {
             viewModel.setAuthManager(authManager)

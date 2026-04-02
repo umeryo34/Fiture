@@ -159,38 +159,10 @@ struct SignUpView: View {
         
         Task {
             do {
-                // Supabaseで認証登録
-                let authResponse = try await SupabaseManager.shared.client.auth.signUp(
+                let newUser = try LocalDataStore.shared.register(
+                    name: name,
                     email: email,
                     password: password
-                )
-                
-                // usersテーブルにユーザー情報を保存（認証ユーザーのIDを使用）
-                struct UserInsert: Encodable {
-                    let id: String
-                    let name: String
-                    let email: String
-                }
-                
-                let userData = UserInsert(
-                    id: authResponse.user.id.uuidString.lowercased(),
-                    name: name,
-                    email: email
-                )
-                
-                try await SupabaseManager.shared.client
-                    .from("users")
-                    .insert(userData)
-                    .execute()
-                
-                // 登録直後は手動でユーザー情報を設定（sessionMissingエラー回避）
-                let newUser = User(
-                    id: authResponse.user.id,
-                    name: name,
-                    email: email,
-                    profileImageUrl: nil,
-                    createdAt: Date(),
-                    updatedAt: Date()
                 )
                 
                 await MainActor.run {

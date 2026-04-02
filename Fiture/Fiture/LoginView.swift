@@ -121,32 +121,12 @@ struct LoginView: View {
         
         Task {
             do {
-                let authResponse = try await SupabaseManager.shared.client.auth.signIn(
-                    email: email,
-                    password: password
-                )
-                
-                let userId = authResponse.user.id.uuidString.lowercased()
-                let response: [User] = try await SupabaseManager.shared.client
-                    .from("users")
-                    .select()
-                    .eq("id", value: userId)
-                    .execute()
-                    .value
-                
-                if let user = response.first {
-                    await MainActor.run {
-                        authManager.currentUser = user
-                        authManager.isAuthenticated = true
-                        isLoading = false
-                        dismiss()
-                    }
-                } else {
-                    await MainActor.run {
-                        isLoading = false
-                        showError = true
-                        errorMessage = "ユーザー情報が見つかりません"
-                    }
+                let user = try LocalDataStore.shared.login(email: email, password: password)
+                await MainActor.run {
+                    authManager.currentUser = user
+                    authManager.isAuthenticated = true
+                    isLoading = false
+                    dismiss()
                 }
             } catch {
                 await MainActor.run {

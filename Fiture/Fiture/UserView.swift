@@ -12,6 +12,7 @@ struct UserView: View {
     @EnvironmentObject var authManager: AuthManager
     @State private var showingEditProfile = false
     @State private var showingThemeSetting = false
+    @State private var showingFitnessProfile = false
     
     private var userName: String {
         authManager.currentUser?.name ?? "ユーザー"
@@ -58,6 +59,10 @@ struct UserView: View {
                     VStack(spacing: 0) {
                         SettingRow(icon: "person.circle", title: "プロフィール編集", color: .blue) {
                             showingEditProfile = true
+                        }
+                        
+                        SettingRow(icon: "target", title: "フィットネスプロフィール", color: .red) {
+                            showingFitnessProfile = true
                         }
                         
                         SettingRow(icon: "bell.fill", title: "通知設定", color: .orange) {
@@ -114,6 +119,10 @@ struct UserView: View {
         }
         .sheet(isPresented: $showingThemeSetting) {
             ThemeSettingView()
+        }
+        .sheet(isPresented: $showingFitnessProfile) {
+            TargetSettingView()
+                .environmentObject(authManager)
         }
     }
 }
@@ -302,62 +311,27 @@ struct EditProfileView: View {
                 
                 var profileImageUrl: String? = authManager.currentUser?.profileImageUrl
                 
-                // 画像が選択されている場合、アップロード
+                // 画像が選択されている場合、ローカルへ保存
                 if let selectedImage = selectedImage,
                    let imageData = selectedImage.jpegData(compressionQuality: 0.8) {
                     let fileName = "\(userId.uuidString)_\(UUID().uuidString).jpg"
-                    let filePath = fileName
-                    
-                    // Supabase Storageにアップロード（既存ファイルがあれば削除してからアップロード）
-                    do {
-                        // 既存のプロフィール画像を削除（存在する場合）
-                        if let existingUrl = authManager.currentUser?.profileImageUrl,
-                           let url = URL(string: existingUrl),
-                           let existingPath = url.pathComponents.last {
-                            try? await SupabaseManager.shared.client.storage
-                                .from("profile-images")
-                                .remove(paths: [existingPath])
-                        }
-                    }
-                    
-                    // 新しいファイルをアップロード
-                    try await SupabaseManager.shared.client.storage
-                        .from("profile-images")
-                        .upload(path: filePath, file: imageData)
-                    
-                    // 公開URLを取得
-                    let publicURL = try SupabaseManager.shared.client.storage
-                        .from("profile-images")
-                        .getPublicURL(path: filePath)
-                    
-                    profileImageUrl = publicURL.absoluteString
-                }
-                
-                // ユーザー情報を更新
-                struct UserUpdate: Encodable {
-                    let name: String
-                    let email: String
-                    let profileImageUrl: String?
-                    
-                    enum CodingKeys: String, CodingKey {
-                        case name
-                        case email
-                        case profileImageUrl = "profile_image_url"
+                    let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+                    if let documents {
+                        let fileURL = documents.appendingPathComponent(fileName)
+                        try imageData.write(to: fileURL, options: .atomic)
+                        profileImageUrl = fileURL.absoluteString
                     }
                 }
                 
-                let updateData = UserUpdate(name: userName, email: userEmail, profileImageUrl: profileImageUrl)
-                
-                try await SupabaseManager.shared.client
-                    .from("users")
-                    .update(updateData)
-                    .eq("id", value: userId.uuidString.lowercased())
-                    .execute()
-                
-                // AuthManagerを更新
-                await authManager.fetchCurrentUser()
+                let updatedUser = try LocalDataStore.shared.updateUser(
+                    userId: userId,
+                    name: userName,
+                    email: userEmail,
+                    profileImageUrl: profileImageUrl
+                )
                 
                 await MainActor.run {
+                    authManager.currentUser = updatedUser
                     isLoading = false
                     dismiss()
                 }
@@ -365,11 +339,7 @@ struct EditProfileView: View {
                 await MainActor.run {
                     isLoading = false
                     showError = true
-                    if error.localizedDescription.contains("Bucket not found") {
-                        errorMessage = "保存に失敗しました: Storageバケット 'profile-images' が存在しません。Supabaseダッシュボードでバケットを作成してください。"
-                    } else {
-                        errorMessage = "保存に失敗しました: \(error.localizedDescription)"
-                    }
+                    errorMessage = "保存に失敗しました: \(error.localizedDescription)"
                 }
             }
         }
