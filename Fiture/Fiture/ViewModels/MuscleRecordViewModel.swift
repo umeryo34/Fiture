@@ -12,6 +12,8 @@ import SwiftUI
 class MuscleRecordViewModel: ObservableObject {
     @Published var exerciseType: String = ""
     @Published var sets: [TrainingSet] = [TrainingSet()]
+    @Published var savedRecords: [TrainingRecord] = []
+    @Published var isEditingExistingRecord: Bool = false
     @Published var isLoading = false
     @Published var showError = false
     @Published var errorMessage = ""
@@ -92,12 +94,38 @@ class MuscleRecordViewModel: ObservableObject {
             ) {
                 let loadedSets = record.sets.map { TrainingSet(weight: $0.weight, reps: $0.reps) }
                 self.sets = loadedSets.isEmpty ? [TrainingSet()] : loadedSets
+                self.isEditingExistingRecord = true
             } else {
                 self.sets = [TrainingSet()]
+                self.isEditingExistingRecord = false
             }
         } catch {
             // 読み込み失敗時はフォームをそのままにする（UIは壊さない）
         }
+    }
+
+    /// 選択した種目の過去レコード一覧を取得する（一覧表示用）
+    func loadSavedRecords(exerciseType: String) async {
+        guard let userId = authManager?.currentUser?.id else { return }
+
+        do {
+            self.savedRecords = try await trainingTargetManager.fetchTrainingRecords(
+                userId: userId,
+                exerciseType: exerciseType
+            )
+        } catch {
+            self.savedRecords = []
+        }
+    }
+
+    /// 既存レコードを読み込んで「変更」モードに切り替える
+    func applyRecord(_ record: TrainingRecord) {
+        // 編集対象の日付/種目を揃える
+        trainingTargetManager.selectedDate = record.date
+        exerciseType = record.exerciseType
+
+        sets = record.sets.map { TrainingSet(weight: $0.weight, reps: $0.reps) }
+        isEditingExistingRecord = true
     }
     
     @discardableResult
@@ -172,6 +200,9 @@ class MuscleRecordViewModel: ObservableObject {
                 exerciseType: exerciseType,
                 sets: setEntries
             )
+
+            // 画面遷移（dismiss）前提だが、次に開いたときに一覧がズレないよう最新化
+            await loadSavedRecords(exerciseType: exerciseType)
             
             isLoading = false
             return true

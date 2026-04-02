@@ -77,6 +77,10 @@ class TrainingTargetManager: ObservableObject {
         LocalDataStore.shared.trainingRecord(userId: userId, date: date, exerciseType: exerciseType)
     }
 
+    func fetchTrainingRecords(userId: UUID, exerciseType: String) async throws -> [TrainingRecord] {
+        LocalDataStore.shared.trainingRecords(userId: userId, exerciseType: exerciseType)
+    }
+
     func upsertTrainingRecord(
         userId: UUID,
         date: Date,

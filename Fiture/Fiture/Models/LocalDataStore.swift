@@ -425,6 +425,16 @@ final class LocalDataStore {
             .toDomain()
     }
 
+    func trainingRecords(userId: UUID, exerciseType: String) -> [TrainingRecord] {
+        loadState().trainingRecords
+            .filter { $0.userId == userId && $0.exerciseType == exerciseType }
+            .sorted { (lhs, rhs) in
+                if lhs.date != rhs.date { return lhs.date > rhs.date }
+                return lhs.updatedAt > rhs.updatedAt
+            }
+            .map { $0.toDomain() }
+    }
+
     func upsertTrainingRecord(
         userId: UUID,
         date: Date,

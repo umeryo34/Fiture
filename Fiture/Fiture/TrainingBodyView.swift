@@ -739,6 +739,17 @@ struct MuscleRecordView: View {
         self._trainingTargetManager = ObservedObject(wrappedValue: trainingTargetManager)
         _viewModel = StateObject(wrappedValue: MuscleRecordViewModel(muscleType: muscleType, trainingTargetManager: trainingTargetManager))
     }
+
+    private var recordDateFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy年M月d日"
+        formatter.locale = Locale(identifier: "ja_JP")
+        return formatter
+    }
+
+    private func recordDateString(_ date: Date) -> String {
+        recordDateFormatter.string(from: date)
+    }
     
     var body: some View {
         NavigationView {
@@ -776,6 +787,7 @@ struct MuscleRecordView: View {
                                                 viewModel.exerciseType = selectedExercise
                                                 Task {
                                                     await viewModel.loadSavedSets(exerciseType: selectedExercise)
+                                                    await viewModel.loadSavedRecords(exerciseType: selectedExercise)
                                                 }
                                             } label: {
                                                 Text(tag.tagName)
@@ -800,6 +812,7 @@ struct MuscleRecordView: View {
                                         viewModel.exerciseType = exercise
                                         Task {
                                             await viewModel.loadSavedSets(exerciseType: exercise)
+                                            await viewModel.loadSavedRecords(exerciseType: exercise)
                                         }
                                     }
                                 }
@@ -832,6 +845,46 @@ struct MuscleRecordView: View {
                             .buttonStyle(.plain)
                         }
                         .padding(.horizontal, 20)
+                        
+                        // 日付セレクタ（既存レコードの有無を切り替える）
+                        DateSelectorBar(selectedDate: $trainingTargetManager.selectedDate) { _ in
+                            let exercise = viewModel.exerciseType
+                            let trimmed = exercise.trimmingCharacters(in: .whitespacesAndNewlines)
+                            guard !trimmed.isEmpty else { return }
+                            Task {
+                                await viewModel.loadSavedSets(exerciseType: trimmed)
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                        
+                        // 過去の記録（行ごとに「変更」）
+                        if !viewModel.savedRecords.isEmpty,
+                           !viewModel.exerciseType.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("過去の記録")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+                                
+                                VStack(alignment: .leading, spacing: 8) {
+                                    ForEach(viewModel.savedRecords.prefix(10)) { record in
+                                        HStack {
+                                            Text(recordDateString(record.date))
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                            
+                                            Spacer()
+                                            
+                                            Button("変更") {
+                                                viewModel.applyRecord(record)
+                                            }
+                                            .buttonStyle(.borderedProminent)
+                                            .tint(.red)
+                                        }
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                        }
                         
                         // セット一覧
                         VStack(alignment: .leading, spacing: 12) {
@@ -909,7 +962,7 @@ struct MuscleRecordView: View {
                             .frame(maxWidth: .infinity)
                             .padding()
                     } else {
-                        Text("記録を保存")
+                        Text(viewModel.isEditingExistingRecord ? "変更を保存" : "記録を保存")
                             .font(.headline)
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
