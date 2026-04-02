@@ -306,7 +306,6 @@ private struct FoodViewContent: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .caloriesDataDidUpdate)) { _ in
             // カロリーデータが更新された時に再取得（選択された日付のデータ）
-            print("FoodView: カロリーデータ更新通知を受信")
             Task {
                 await viewModel.fetchCaloriesDataForDate(viewModel.selectedDate)
             }

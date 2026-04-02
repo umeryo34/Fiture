@@ -76,6 +76,29 @@ class MuscleRecordViewModel: ObservableObject {
             sets.remove(at: index)
         }
     }
+
+    /// 保存済みのセット（重量/回数）を読み込んでフォームに反映する
+    /// - 注意: 呼び出し側で `exerciseType` が確定している場合（タグ/定番ボタン押下など）に呼ぶ前提。
+    func loadSavedSets(exerciseType: String) async {
+        guard let userId = authManager?.currentUser?.id else { return }
+
+        let currentDate = trainingTargetManager.selectedDate
+
+        do {
+            if let record = try await trainingTargetManager.fetchTrainingRecord(
+                userId: userId,
+                date: currentDate,
+                exerciseType: exerciseType
+            ) {
+                let loadedSets = record.sets.map { TrainingSet(weight: $0.weight, reps: $0.reps) }
+                self.sets = loadedSets.isEmpty ? [TrainingSet()] : loadedSets
+            } else {
+                self.sets = [TrainingSet()]
+            }
+        } catch {
+            // 読み込み失敗時はフォームをそのままにする（UIは壊さない）
+        }
+    }
     
     @discardableResult
     func saveRecord() async -> Bool {
@@ -140,6 +163,15 @@ class MuscleRecordViewModel: ObservableObject {
                     date: currentDate
                 )
             }
+
+            // セット単位（重量/回数）もローカルに保存
+            let setEntries = validSets.map { TrainingSetEntry(weight: $0.weight, reps: $0.reps) }
+            try await trainingTargetManager.upsertTrainingRecord(
+                userId: userId,
+                date: currentDate,
+                exerciseType: exerciseType,
+                sets: setEntries
+            )
             
             isLoading = false
             return true

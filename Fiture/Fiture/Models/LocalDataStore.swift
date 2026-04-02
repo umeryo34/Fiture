@@ -416,6 +416,53 @@ final class LocalDataStore {
         saveState(state)
     }
 
+    // MARK: - Training Record (セットの重量/回数)
+
+    func trainingRecord(userId: UUID, date: Date, exerciseType: String) -> TrainingRecord? {
+        let targetDate = startOfDay(date)
+        return loadState().trainingRecords
+            .first { $0.userId == userId && Calendar.current.isDate($0.date, inSameDayAs: targetDate) && $0.exerciseType == exerciseType }?
+            .toDomain()
+    }
+
+    func upsertTrainingRecord(
+        userId: UUID,
+        date: Date,
+        exerciseType: String,
+        sets: [TrainingSetEntry]
+    ) -> TrainingRecord {
+        var state = loadState()
+        let targetDate = startOfDay(date)
+        let now = Date()
+
+        let localSets = sets.map { LocalTrainingSet(weight: $0.weight, reps: $0.reps) }
+
+        if let index = state.trainingRecords.firstIndex(where: {
+            $0.userId == userId &&
+            Calendar.current.isDate($0.date, inSameDayAs: targetDate) &&
+            $0.exerciseType == exerciseType
+        }) {
+            state.trainingRecords[index].sets = localSets
+            state.trainingRecords[index].updatedAt = now
+            let value = state.trainingRecords[index]
+            saveState(state)
+            return value.toDomain()
+        }
+
+        let newRecord = LocalTrainingRecord(
+            id: UUID(),
+            userId: userId,
+            date: targetDate,
+            exerciseType: exerciseType,
+            sets: localSets,
+            createdAt: now,
+            updatedAt: now
+        )
+        state.trainingRecords.append(newRecord)
+        saveState(state)
+        return newRecord.toDomain()
+    }
+
     // MARK: - Private
 
     private var dateFormatter: DateFormatter {
@@ -451,6 +498,7 @@ private struct LocalAppState: Codable {
     var caloriesTargets: [LocalCaloriesTarget] = []
     var trainingTargets: [LocalTrainingTarget] = []
     var trainingTags: [LocalTrainingTag] = []
+    var trainingRecords: [LocalTrainingRecord] = []
     var nextWeightEntryId: Int = 0
     var nextCaloriesEntryId: Int = 0
 }
@@ -545,6 +593,37 @@ private struct LocalTrainingTarget: Codable {
             createdAt: createdAt,
             updatedAt: updatedAt
         )
+    }
+}
+
+private struct LocalTrainingRecord: Codable {
+    let id: UUID
+    let userId: UUID
+    let date: Date
+    let exerciseType: String
+    var sets: [LocalTrainingSet]
+    let createdAt: Date
+    var updatedAt: Date
+
+    func toDomain() -> TrainingRecord {
+        TrainingRecord(
+            id: id,
+            userId: userId,
+            date: date,
+            exerciseType: exerciseType,
+            sets: sets.map { $0.toDomain() },
+            createdAt: createdAt,
+            updatedAt: updatedAt
+        )
+    }
+}
+
+private struct LocalTrainingSet: Codable {
+    var weight: String
+    var reps: String
+
+    func toDomain() -> TrainingSetEntry {
+        TrainingSetEntry(weight: weight, reps: reps)
     }
 }
 

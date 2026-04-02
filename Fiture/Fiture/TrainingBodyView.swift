@@ -772,7 +772,11 @@ struct MuscleRecordView: View {
                                     HStack(spacing: 8) {
                                         ForEach(trainingTargetManager.trainingTags) { tag in
                                             Button {
-                                                viewModel.exerciseType = tag.tagName
+                                                let selectedExercise = tag.tagName
+                                                viewModel.exerciseType = selectedExercise
+                                                Task {
+                                                    await viewModel.loadSavedSets(exerciseType: selectedExercise)
+                                                }
                                             } label: {
                                                 Text(tag.tagName)
                                                     .font(.subheadline)
@@ -794,6 +798,9 @@ struct MuscleRecordView: View {
                                 ForEach(viewModel.availableExercises, id: \.self) { exercise in
                                     Button(exercise) {
                                         viewModel.exerciseType = exercise
+                                        Task {
+                                            await viewModel.loadSavedSets(exerciseType: exercise)
+                                        }
                                     }
                                 }
                             } label: {

@@ -60,7 +60,6 @@ class CaloriesTargetManager: ObservableObject {
         
         // データ更新を通知
         await MainActor.run {
-            print("CaloriesTargetManager: カロリーデータ更新通知を送信 (deleteCaloriesEntry)")
             NotificationCenter.default.post(name: .caloriesDataDidUpdate, object: nil)
         }
     }

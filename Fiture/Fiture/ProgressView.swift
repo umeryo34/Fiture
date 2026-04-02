@@ -112,6 +112,7 @@ struct ProgressView: View {
                 
                 do {
                     try await fetchWeight
+                    print("体重データ取得完了: \(weightTargetManager.weightEntries.count)件")
                 } catch {
                     print("体重データ取得エラー: \(error)")
                 }
@@ -124,6 +125,7 @@ struct ProgressView: View {
                     }
                 } catch {
                     print("今日の体重データ取得エラー: \(error)")
+                    print("今日の体重データ取得エラー: \(error)")
                     await MainActor.run {
                         hasTodayWeight = false
                     }
@@ -131,6 +133,7 @@ struct ProgressView: View {
                 
                 do {
                     caloriesHistory = try await fetchCalories
+                    print("カロリーデータ取得完了: \(caloriesHistory.count)件")
                 } catch {
                     print("カロリーデータ取得エラー: \(error)")
                 }

@@ -158,7 +158,6 @@ struct CaloriesSearchView: View {
             } catch {
                 await MainActor.run {
                     isLoading = false
-                    print("検索エラー: \(error)")
                 }
             }
         }

@@ -70,5 +70,20 @@ class TrainingTargetManager: ObservableObject {
             trainingTags.removeAll { $0.id == tagId }
         }
     }
+
+    // MARK: - Training Record (セットの重量/回数)
+
+    func fetchTrainingRecord(userId: UUID, date: Date, exerciseType: String) async throws -> TrainingRecord? {
+        LocalDataStore.shared.trainingRecord(userId: userId, date: date, exerciseType: exerciseType)
+    }
+
+    func upsertTrainingRecord(
+        userId: UUID,
+        date: Date,
+        exerciseType: String,
+        sets: [TrainingSetEntry]
+    ) async throws {
+        _ = LocalDataStore.shared.upsertTrainingRecord(userId: userId, date: date, exerciseType: exerciseType, sets: sets)
+    }
 }
 
