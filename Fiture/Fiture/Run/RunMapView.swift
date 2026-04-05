@@ -9,10 +9,6 @@ import SwiftUI
 import MapKit
 
 struct RunMapView: View {
-    let runTarget: RunTarget
-    let runTargetManager: RunTargetManager
-    let userId: UUID
-    
     @Environment(\.dismiss) private var dismiss
     // 東京の座標をデフォルトに設定
     private let defaultLocation = CLLocationCoordinate2D(latitude: 35.6762, longitude: 139.6503)
@@ -251,31 +247,16 @@ struct RunMapView: View {
         
         isLoading = true
         let distanceInKm = locationManager.totalDistance / 1000.0
-        let newAttempt = runTarget.attempt + distanceInKm
-        
-        Task {
-            do {
-                try await runTargetManager.updateRunTarget(
-                    userId: userId,
-                    attempt: newAttempt,
-                    date: runTarget.date
-                )
-                
-                // Run目標更新を通知
-                NotificationCenter.default.post(name: .init("RunTargetDidUpdate"), object: nil)
-                
-                await MainActor.run {
-                    isLoading = false
-                    dismiss()
-                }
-            } catch {
-                await MainActor.run {
-                    isLoading = false
-                    showError = true
-                    errorMessage = "保存に失敗しました: \(error.localizedDescription)"
-                }
-            }
-        }
+
+        _ = LocalDataStore.shared.addRunRecord(
+            distanceKm: distanceInKm,
+            durationSeconds: elapsedTime,
+            source: .map
+        )
+        NotificationCenter.default.post(name: .init("RunRecordDidSave"), object: nil)
+
+        isLoading = false
+        dismiss()
     }
 }
 
@@ -385,22 +366,9 @@ class RunLocationManager: NSObject, ObservableObject, CLLocationManagerDelegate 
 }
 
 #Preview {
-    let sampleTarget = RunTarget(
-        userId: UUID(),
-        date: Date(),
-        target: 10.0,
-        attempt: 0.0,
-        isAchieved: false,
-        createdAt: Date(),
-        updatedAt: Date()
-    )
     NavigationView {
-        RunMapView(
-            runTarget: sampleTarget,
-            runTargetManager: RunTargetManager(),
-            userId: UUID()
-        )
-        .navigationTitle("Run")
-        .navigationBarTitleDisplayMode(.inline)
+        RunMapView()
+            .navigationTitle("Run")
+            .navigationBarTitleDisplayMode(.inline)
     }
 }

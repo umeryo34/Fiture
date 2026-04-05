@@ -180,6 +180,38 @@ final class LocalDataStore {
         saveState(state)
     }
 
+    // MARK: - Run records（端末ローカル・ユーザー紐付けなし）
+
+    func addRunRecord(
+        distanceKm: Double,
+        durationSeconds: TimeInterval,
+        source: RunRecordSource,
+        treadmillInclineDegrees: Double? = nil,
+        treadmillSpeedKmh: Double? = nil
+    ) -> RunRecord {
+        var state = loadState()
+        let now = Date()
+        let local = LocalRunRecord(
+            id: UUID(),
+            endedAt: now,
+            distanceKm: distanceKm,
+            durationSeconds: durationSeconds,
+            source: source.rawValue,
+            treadmillInclineDegrees: treadmillInclineDegrees,
+            treadmillSpeedKmh: treadmillSpeedKmh
+        )
+        state.runRecords.append(local)
+        saveState(state)
+        return local.toDomain()
+    }
+
+    /// 新しい順
+    func runRecords() -> [RunRecord] {
+        loadState().runRecords
+            .sorted { $0.endedAt > $1.endedAt }
+            .map { $0.toDomain() }
+    }
+
     // MARK: - Weight
 
     func weightEntry(userId: UUID, date: Date) -> WeightEntry? {
@@ -503,6 +535,7 @@ final class LocalDataStore {
 private struct LocalAppState: Codable {
     var users: [LocalUser] = []
     var runTargets: [LocalRunTarget] = []
+    var runRecords: [LocalRunRecord] = []
     var weightEntries: [LocalWeightEntry] = []
     var caloriesEntries: [LocalCaloriesEntry] = []
     var caloriesTargets: [LocalCaloriesTarget] = []
@@ -538,6 +571,28 @@ private struct LocalRunTarget: Codable {
 
     func toDomain() -> RunTarget {
         RunTarget(userId: userId, date: date, target: target, attempt: attempt, isAchieved: isAchieved, createdAt: createdAt, updatedAt: updatedAt)
+    }
+}
+
+private struct LocalRunRecord: Codable {
+    let id: UUID
+    let endedAt: Date
+    let distanceKm: Double
+    let durationSeconds: TimeInterval
+    let source: String
+    let treadmillInclineDegrees: Double?
+    let treadmillSpeedKmh: Double?
+
+    func toDomain() -> RunRecord {
+        RunRecord(
+            id: id,
+            endedAt: endedAt,
+            distanceKm: distanceKm,
+            durationSeconds: durationSeconds,
+            source: RunRecordSource(rawValue: source) ?? .map,
+            treadmillInclineDegrees: treadmillInclineDegrees,
+            treadmillSpeedKmh: treadmillSpeedKmh
+        )
     }
 }
 

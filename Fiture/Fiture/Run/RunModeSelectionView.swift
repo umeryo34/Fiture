@@ -9,10 +9,6 @@ struct RunModeSelectionView: View {
         var id: String { rawValue }
     }
 
-    let runTarget: RunTarget
-    let runTargetManager: RunTargetManager
-    let userId: UUID
-
     @Environment(\.dismiss) private var dismiss
 
     @State private var mode: RunMode = .anywhere
@@ -39,17 +35,9 @@ struct RunModeSelectionView: View {
 
                 // 選択に応じて表示を切り替える（地図はAnywhereだけ）
                 if mode == .anywhere {
-                    RunMapView(
-                        runTarget: runTarget,
-                        runTargetManager: runTargetManager,
-                        userId: userId
-                    )
+                    RunMapView()
                 } else {
-                    RunGymView(
-                        runTarget: runTarget,
-                        runTargetManager: runTargetManager,
-                        userId: userId
-                    )
+                    RunGymView()
                 }
             }
             .navigationTitle("Run")

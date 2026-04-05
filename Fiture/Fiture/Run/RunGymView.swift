@@ -9,10 +9,6 @@ struct RunGymView: View {
         var id: String { rawValue }
     }
 
-    let runTarget: RunTarget
-    let runTargetManager: RunTargetManager
-    let userId: UUID
-
     @Environment(\.dismiss) private var dismiss
 
     @State private var motion: MotionType = .running
@@ -178,30 +174,17 @@ struct RunGymView: View {
         }
 
         isLoading = true
-        let newAttempt = runTarget.attempt + totalDistanceKm
-
-        Task {
-            do {
-                try await runTargetManager.updateRunTarget(
-                    userId: userId,
-                    attempt: newAttempt,
-                    date: runTarget.date
-                )
-
-                NotificationCenter.default.post(name: .init("RunTargetDidUpdate"), object: nil)
-
-                await MainActor.run {
-                    isLoading = false
-                    dismiss()
-                }
-            } catch {
-                await MainActor.run {
-                    isLoading = false
-                    showError = true
-                    errorMessage = "保存に失敗しました: \(error.localizedDescription)"
-                }
-            }
-        }
+        let source: RunRecordSource = motion == .running ? .gymRunning : .gymWalking
+        _ = LocalDataStore.shared.addRunRecord(
+            distanceKm: totalDistanceKm,
+            durationSeconds: elapsedTime,
+            source: source,
+            treadmillInclineDegrees: angle,
+            treadmillSpeedKmh: speedKmPerHour
+        )
+        NotificationCenter.default.post(name: .init("RunRecordDidSave"), object: nil)
+        isLoading = false
+        dismiss()
     }
 }
 
