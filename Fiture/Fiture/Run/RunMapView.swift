@@ -33,8 +33,7 @@ struct RunMapView: View {
     @State private var userTrackingMode: MapUserTrackingMode = .none
     
     var body: some View {
-        NavigationView {
-            ZStack {
+        ZStack {
                 Map(coordinateRegion: $region, showsUserLocation: true, userTrackingMode: $userTrackingMode)
                     .onAppear {
                         setupLocation()
@@ -166,18 +165,6 @@ struct RunMapView: View {
                     .padding(.bottom, 30)
                 }
             }
-            .navigationTitle("Run記録")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("キャンセル") {
-                        if isRunning {
-                            stopRun()
-                        }
-                        dismiss()
-                    }
-                }
-            }
             .alert("Runを保存", isPresented: $showingSaveConfirmation) {
                 Button("キャンセル", role: .cancel) { }
                 Button("保存") {
@@ -191,7 +178,6 @@ struct RunMapView: View {
             } message: {
                 Text(errorMessage)
             }
-        }
     }
     
     private func setupLocation() {
@@ -408,9 +394,13 @@ class RunLocationManager: NSObject, ObservableObject, CLLocationManagerDelegate 
         createdAt: Date(),
         updatedAt: Date()
     )
-    RunMapView(
-        runTarget: sampleTarget,
-        runTargetManager: RunTargetManager(),
-        userId: UUID()
-    )
+    NavigationView {
+        RunMapView(
+            runTarget: sampleTarget,
+            runTargetManager: RunTargetManager(),
+            userId: UUID()
+        )
+        .navigationTitle("Run")
+        .navigationBarTitleDisplayMode(.inline)
+    }
 }
