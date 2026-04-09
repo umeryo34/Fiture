@@ -186,6 +186,7 @@ final class LocalDataStore {
         distanceKm: Double,
         durationSeconds: TimeInterval,
         source: RunRecordSource,
+        caloriesKcal: Double? = nil,
         treadmillInclineDegrees: Double? = nil,
         treadmillSpeedKmh: Double? = nil
     ) -> RunRecord {
@@ -197,6 +198,7 @@ final class LocalDataStore {
             distanceKm: distanceKm,
             durationSeconds: durationSeconds,
             source: source.rawValue,
+            caloriesKcal: caloriesKcal,
             treadmillInclineDegrees: treadmillInclineDegrees,
             treadmillSpeedKmh: treadmillSpeedKmh
         )
@@ -580,6 +582,7 @@ private struct LocalRunRecord: Codable {
     let distanceKm: Double
     let durationSeconds: TimeInterval
     let source: String
+    var caloriesKcal: Double?
     let treadmillInclineDegrees: Double?
     let treadmillSpeedKmh: Double?
 
@@ -590,6 +593,7 @@ private struct LocalRunRecord: Codable {
             distanceKm: distanceKm,
             durationSeconds: durationSeconds,
             source: RunRecordSource(rawValue: source) ?? .map,
+            caloriesKcal: caloriesKcal,
             treadmillInclineDegrees: treadmillInclineDegrees,
             treadmillSpeedKmh: treadmillSpeedKmh
         )

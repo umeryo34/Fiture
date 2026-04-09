@@ -27,7 +27,28 @@ struct RunMapView: View {
     @State private var errorMessage = ""
     @State private var showError = false
     @State private var userTrackingMode: MapUserTrackingMode = .none
-    
+
+    /// セッション平均速度（km/h）。屋外は傾斜0として ACSM を適用。
+    private var mapAverageSpeedKmh: Double {
+        guard elapsedTime > 0 else { return 0 }
+        let km = locationManager.totalDistance / 1000.0
+        return km / (elapsedTime / 3600.0)
+    }
+
+    private var mapEstimatedCaloriesKcal: Double? {
+        guard let weight = RunCalorieProfile.weightKg(),
+              elapsedTime > 0,
+              mapAverageSpeedKmh > 0 else { return nil }
+        let kind = ACSMRunCalorieCalculator.mapActivityKind(averageSpeedKmh: mapAverageSpeedKmh)
+        return ACSMRunCalorieCalculator.totalCalories(
+            weightKg: weight,
+            speedKmh: mapAverageSpeedKmh,
+            gradeDecimal: 0,
+            durationSeconds: elapsedTime,
+            kind: kind
+        )
+    }
+
     var body: some View {
         ZStack {
                 Map(coordinateRegion: $region, showsUserLocation: true, userTrackingMode: $userTrackingMode)
@@ -112,29 +133,54 @@ struct RunMapView: View {
                     
                     VStack(spacing: 15) {
                         // 距離と時間の表示
-                        HStack(spacing: 30) {
+                        HStack(spacing: 20) {
                             VStack {
                                 Text(String(format: "%.2f", locationManager.totalDistance / 1000.0))
-                                    .font(.system(size: 32, weight: .bold))
+                                    .font(.system(size: 28, weight: .bold))
                                     .foregroundColor(.blue)
                                 Text("km")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
-                            
+
                             VStack {
                                 Text(formatTime(elapsedTime))
-                                    .font(.system(size: 32, weight: .bold))
+                                    .font(.system(size: 28, weight: .bold))
                                     .foregroundColor(.blue)
                                 Text("時間")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
+                            }
+
+                            VStack {
+                                if let kcal = mapEstimatedCaloriesKcal {
+                                    Text(String(format: "%.0f", kcal))
+                                        .font(.system(size: 28, weight: .bold))
+                                        .foregroundColor(.orange)
+                                    Text("kcal")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                } else {
+                                    Text("—")
+                                        .font(.system(size: 28, weight: .bold))
+                                        .foregroundColor(.secondary)
+                                    Text("kcal")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
                             }
                         }
                         .padding()
                         .background(Color(.systemBackground).opacity(0.95))
                         .cornerRadius(15)
                         .shadow(radius: 5)
+
+                        if RunCalorieProfile.weightKg() == nil {
+                            Text("消費カロリーはプロフィールの体重が必要です")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                        }
                         
                         // 開始/停止ボタン
                         Button(action: {
@@ -167,7 +213,7 @@ struct RunMapView: View {
                     saveRun()
                 }
             } message: {
-                Text("距離: \(String(format: "%.2f", locationManager.totalDistance / 1000.0)) km\n時間: \(formatTime(elapsedTime))")
+                Text(mapSaveConfirmationMessage)
             }
             .alert("エラー", isPresented: $showError) {
                 Button("OK") { }
@@ -238,6 +284,21 @@ struct RunMapView: View {
         }
     }
     
+    private var mapSaveConfirmationMessage: String {
+        let km = locationManager.totalDistance / 1000.0
+        var lines = [
+            "距離: \(String(format: "%.2f", km)) km",
+            "時間: \(formatTime(elapsedTime))"
+        ]
+        if let kcal = mapEstimatedCaloriesKcal {
+            lines.append("消費カロリー（推定）: \(String(format: "%.0f", kcal)) kcal")
+        }
+        if mapAverageSpeedKmh > 0 {
+            lines.append(String(format: "平均ペース: %.1f km/h（6未満=歩行式）", mapAverageSpeedKmh))
+        }
+        return lines.joined(separator: "\n")
+    }
+
     private func saveRun() {
         guard locationManager.totalDistance > 0 else {
             errorMessage = "距離が0です。Runを記録できません。"
@@ -251,7 +312,8 @@ struct RunMapView: View {
         _ = LocalDataStore.shared.addRunRecord(
             distanceKm: distanceInKm,
             durationSeconds: elapsedTime,
-            source: .map
+            source: .map,
+            caloriesKcal: mapEstimatedCaloriesKcal
         )
         NotificationCenter.default.post(name: .init("RunRecordDidSave"), object: nil)
 

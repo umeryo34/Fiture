@@ -33,6 +33,22 @@ struct RunGymView: View {
         return speedKmPerHour * (elapsedTime / 3600.0)
     }
 
+    /// 傾斜は UI 上「度」→ ACSM の G は tan(θ)
+    private var estimatedCaloriesKcal: Double? {
+        guard let weight = RunCalorieProfile.weightKg(),
+              speedKmPerHour > 0,
+              elapsedTime > 0 else { return nil }
+        let G = ACSMRunCalorieCalculator.gradeDecimal(fromDegrees: angle)
+        let kind: ACSMRunActivityKind = motion == .running ? .run : .walk
+        return ACSMRunCalorieCalculator.totalCalories(
+            weightKg: weight,
+            speedKmh: speedKmPerHour,
+            gradeDecimal: G,
+            durationSeconds: elapsedTime,
+            kind: kind
+        )
+    }
+
     var body: some View {
         VStack(spacing: 16) {
                 VStack(alignment: .leading, spacing: 12) {
@@ -57,7 +73,7 @@ struct RunGymView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("角度: \(Int(angle))度")
+                        Text("傾斜: \(Int(angle))°")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                         Slider(value: $angle, in: 0...15, step: 1)
@@ -78,10 +94,10 @@ struct RunGymView: View {
                 Spacer()
 
                 VStack(spacing: 15) {
-                    HStack(spacing: 30) {
+                    HStack(spacing: 24) {
                         VStack {
                             Text(String(format: "%.2f", isRunning ? currentDistanceKm : totalDistanceKm))
-                                .font(.system(size: 32, weight: .bold))
+                                .font(.system(size: 28, weight: .bold))
                                 .foregroundColor(.blue)
                             Text("km")
                                 .font(.caption)
@@ -89,12 +105,35 @@ struct RunGymView: View {
                         }
                         VStack {
                             Text(formatTime(elapsedTime))
-                                .font(.system(size: 32, weight: .bold))
+                                .font(.system(size: 28, weight: .bold))
                                 .foregroundColor(.blue)
                             Text("時間")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
+                        VStack {
+                            if let kcal = estimatedCaloriesKcal {
+                                Text(String(format: "%.0f", kcal))
+                                    .font(.system(size: 28, weight: .bold))
+                                    .foregroundColor(.orange)
+                                Text("kcal")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            } else {
+                                Text("—")
+                                    .font(.system(size: 28, weight: .bold))
+                                    .foregroundColor(.secondary)
+                                Text("kcal")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    if RunCalorieProfile.weightKg() == nil {
+                        Text("消費カロリーはプロフィールの体重が必要です")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
                     }
 
                     Button(action: {
@@ -124,7 +163,7 @@ struct RunGymView: View {
                 Button("キャンセル", role: .cancel) { }
                 Button("保存") { saveGym() }
             } message: {
-                Text("距離: \(String(format: "%.2f", totalDistanceKm)) km\n時間: \(formatTime(elapsedTime))")
+                Text(saveConfirmationMessage)
             }
             .alert("エラー", isPresented: $showError) {
                 Button("OK") { }
@@ -166,6 +205,33 @@ struct RunGymView: View {
         }
     }
 
+    private var saveConfirmationMessage: String {
+        var lines = [
+            "距離: \(String(format: "%.2f", totalDistanceKm)) km",
+            "時間: \(formatTime(elapsedTime))"
+        ]
+        if let kcal = finalCaloriesKcalForSave {
+            lines.append("消費カロリー（推定）: \(String(format: "%.0f", kcal)) kcal")
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    /// 停止直後の値で保存用（確認アラートと同一ロジック）
+    private var finalCaloriesKcalForSave: Double? {
+        guard let weight = RunCalorieProfile.weightKg(),
+              speedKmPerHour > 0,
+              elapsedTime > 0 else { return nil }
+        let G = ACSMRunCalorieCalculator.gradeDecimal(fromDegrees: angle)
+        let kind: ACSMRunActivityKind = motion == .running ? .run : .walk
+        return ACSMRunCalorieCalculator.totalCalories(
+            weightKg: weight,
+            speedKmh: speedKmPerHour,
+            gradeDecimal: G,
+            durationSeconds: elapsedTime,
+            kind: kind
+        )
+    }
+
     private func saveGym() {
         guard totalDistanceKm > 0 else {
             errorMessage = "距離が0です。Runを記録できません。"
@@ -179,6 +245,7 @@ struct RunGymView: View {
             distanceKm: totalDistanceKm,
             durationSeconds: elapsedTime,
             source: source,
+            caloriesKcal: finalCaloriesKcalForSave,
             treadmillInclineDegrees: angle,
             treadmillSpeedKmh: speedKmPerHour
         )
