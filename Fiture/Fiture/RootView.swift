@@ -38,7 +38,6 @@ struct RootView: View {
                 }
             
             RunView()
-                .environmentObject(authManager)
                 .tabItem {
                     Image(systemName: "figure.run")
                     Text("Run")
