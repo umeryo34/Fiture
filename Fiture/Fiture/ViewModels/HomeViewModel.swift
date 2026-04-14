@@ -16,6 +16,8 @@ class HomeViewModel: ObservableObject {
     @Published var showingSearch = false
     @Published var selectedDate: Date = Date()
     @Published var isLoading = false
+    /// 選択日の Run 記録に基づく消費カロリー合計（kcal）
+    @Published var runBurnedCaloriesKcal: Double = 0
     
     private let caloriesTargetManager = CaloriesTargetManager()
     weak var authManager: AuthManager?
@@ -36,6 +38,11 @@ class HomeViewModel: ObservableObject {
     
     var totalCalories: Double {
         caloriesTargetManager.totalCalories
+    }
+
+    /// 食事摂取 − Run消費（運動後の「正味」摂取イメージ）
+    var netCaloriesAfterRun: Double {
+        totalCalories - runBurnedCaloriesKcal
     }
     
     var caloriesEntries: [CaloriesEntry] {
@@ -121,6 +128,7 @@ class HomeViewModel: ObservableObject {
         
         try? await fetchEntries
         try? await fetchTarget
+        runBurnedCaloriesKcal = LocalDataStore.shared.runBurnedCaloriesKcal(on: date)
     }
     
     func formatTime(_ date: Date) -> String {

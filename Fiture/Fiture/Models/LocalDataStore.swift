@@ -214,6 +214,14 @@ final class LocalDataStore {
             .map { $0.toDomain() }
     }
 
+    /// 指定日（ローカル日付）に保存した Run の消費カロリー合計。`caloriesKcal` が nil の記録は 0 扱い。
+    func runBurnedCaloriesKcal(on date: Date) -> Double {
+        let day = startOfDay(date)
+        return loadState().runRecords
+            .filter { Calendar.current.isDate($0.endedAt, inSameDayAs: day) }
+            .reduce(0) { $0 + ($1.caloriesKcal ?? 0) }
+    }
+
     // MARK: - Weight
 
     func weightEntry(userId: UUID, date: Date) -> WeightEntry? {
@@ -312,6 +320,28 @@ final class LocalDataStore {
     func caloriesTarget(userId: UUID, date: Date) -> CaloriesTarget? {
         let targetDate = startOfDay(date)
         return loadState().caloriesTargets.first(where: { $0.userId == userId && Calendar.current.isDate($0.date, inSameDayAs: targetDate) })?.toDomain()
+    }
+
+    /// 選択日に行がなければ、同一ユーザーの過去最新の目標を使う。保存が1件もなければ基本情報（TDEE）から推定（永続化しない）。
+    func resolvedCaloriesTarget(userId: UUID, date: Date) -> CaloriesTarget? {
+        let targetDate = startOfDay(date)
+        let all = loadState().caloriesTargets.filter { $0.userId == userId }
+        if let exact = all.first(where: { Calendar.current.isDate($0.date, inSameDayAs: targetDate) }) {
+            return exact.toDomain()
+        }
+        let onOrBefore = all.filter { $0.date <= targetDate }.sorted { $0.date < $1.date }
+        if let row = onOrBefore.last {
+            return row.toDomain()
+        }
+        if let row = all.sorted(by: { $0.date < $1.date }).last {
+            return row.toDomain()
+        }
+        let profile = FitnessProfileStorage.load(userId: userId)
+        if profile.isCompleted, let tdee = profile.tdee {
+            let now = Date()
+            return CaloriesTarget(userId: userId, date: targetDate, target: tdee.rounded(), createdAt: now, updatedAt: now)
+        }
+        return nil
     }
 
     func upsertCaloriesTarget(userId: UUID, date: Date, target: Double) -> CaloriesTarget {

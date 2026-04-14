@@ -64,10 +64,10 @@ class CaloriesTargetManager: ObservableObject {
         }
     }
     
-    // カロリー目標を取得
+    // カロリー目標を取得（日付専用行がなくても過去の目標や基本情報の TDEE で補完）
     func fetchCaloriesTarget(userId: UUID, date: Date = Date()) async throws {
         await MainActor.run {
-            caloriesTarget = LocalDataStore.shared.caloriesTarget(userId: userId, date: date)
+            caloriesTarget = LocalDataStore.shared.resolvedCaloriesTarget(userId: userId, date: date)
             selectedDate = date
         }
     }
