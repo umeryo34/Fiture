@@ -26,7 +26,8 @@ private struct FoodViewContent: View {
     @ObservedObject var viewModel: HomeViewModel
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Button(action: {
                     viewModel.showingDatePicker = true
@@ -177,98 +178,37 @@ private struct FoodViewContent: View {
                 }
                 .padding(.bottom, 10)
             }
-            
-            Spacer()
 
-            // 今日の食事（下部）
-            VStack(alignment: .leading, spacing: 12) {
-                Text("今日の食事")
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .foregroundColor(.primary)
-                    .padding(.horizontal, 20)
-                
-                if viewModel.caloriesEntries.isEmpty {
-                    // 食事がない場合（中央配置）
+            CalorieBalanceCard(viewModel: viewModel)
+                .padding(.top, 12)
+
+            NavigationLink {
+                FoodDayDetailView(viewModel: viewModel)
+            } label: {
+                HStack {
+                    Text("詳細")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
                     Spacer()
-                    VStack(spacing: 12) {
-                        Image(systemName: "fork.knife")
-                            .font(.system(size: 50))
-                            .foregroundColor(.gray)
-                        
-                        VStack(spacing: 4) {
-                            Text("まだ食事を記録していません")
-                                .font(.subheadline)
-                                .foregroundColor(.gray)
-                            
-                            Text("カロリー目標を設定して記録しよう")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    Spacer()
-                } else {
-                    // 食事リスト
-                    ScrollView {
-                        VStack(spacing: 8) {
-                            ForEach(viewModel.caloriesEntries) { entry in
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(entry.foodName)
-                                            .font(.subheadline)
-                                            .foregroundColor(.primary)
-                                        
-                                        Text(viewModel.formatTime(entry.createdAt))
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    
-                                    Spacer()
-                                    
-                                    Text("\(String(format: "%.0f", entry.calories)) kcal")
-                                        .font(.subheadline)
-                                        .fontWeight(.medium)
-                                        .foregroundColor(.black)
-                                }
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 12)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .fill(Color(.systemGray6))
-                                )
-                            }
-                        }
-                        .padding(.horizontal, 20)
-                    }
-                    
-                    // 合計カロリー
-                    HStack {
-                        Text("合計")
-                            .font(.headline)
-                            .fontWeight(.bold)
-                        
-                        Spacer()
-                        
-                        Text("\(String(format: "%.0f", viewModel.totalCalories)) kcal")
-                            .font(.headline)
-                            .fontWeight(.bold)
-                            .foregroundColor(viewModel.totalCaloriesColor)
-                    }
-                    .padding()
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(viewModel.totalCaloriesBackgroundColor)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(viewModel.totalCaloriesBorderColor, lineWidth: 1)
-                    )
-                    .padding(.horizontal, 20)
+                    Image(systemName: "chevron.right")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .frame(maxWidth: .infinity)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color(.systemGray6))
+                )
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
             }
-            .padding(.bottom, 20)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .buttonStyle(.plain)
+
+            Spacer()
+            }
         }
         .sheet(isPresented: $viewModel.showingTargetSetting) {
             CaloriesTargetSettingView(
@@ -309,6 +249,159 @@ private struct FoodViewContent: View {
             Task {
                 await viewModel.fetchCaloriesDataForDate(viewModel.selectedDate)
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("RunRecordDidSave"))) { _ in
+            Task {
+                await viewModel.fetchCaloriesDataForDate(viewModel.selectedDate)
+            }
+        }
+    }
+}
+
+/// 食事メニュー表と食事合計（メイン画面から遷移）
+private struct FoodDayDetailView: View {
+    @ObservedObject var viewModel: HomeViewModel
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                if viewModel.caloriesEntries.isEmpty {
+                    VStack(spacing: 16) {
+                        Image(systemName: "fork.knife")
+                            .font(.system(size: 50))
+                            .foregroundColor(.gray)
+                        VStack(spacing: 4) {
+                            Text("まだ食事を記録していません")
+                                .font(.subheadline)
+                                .foregroundColor(.gray)
+                            Text("「食事を追加」から記録できます")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 40)
+                } else {
+                    VStack(spacing: 8) {
+                        ForEach(viewModel.caloriesEntries) { entry in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(entry.foodName)
+                                        .font(.subheadline)
+                                        .foregroundColor(.primary)
+                                    Text(viewModel.formatTime(entry.createdAt))
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Text("\(String(format: "%.0f", entry.calories)) kcal")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .foregroundColor(.primary)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color(.systemGray6))
+                            )
+                        }
+                    }
+                }
+
+                HStack {
+                    Text("食事の合計")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                    Spacer()
+                    Text("\(String(format: "%.0f", viewModel.totalCalories)) kcal")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(viewModel.totalCaloriesColor)
+                }
+                .padding()
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(viewModel.totalCaloriesBackgroundColor)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(viewModel.totalCaloriesBorderColor, lineWidth: 1)
+                )
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 8)
+            .padding(.bottom, 24)
+        }
+        .background(Color(.systemGroupedBackground))
+        .navigationTitle(detailDateTitle)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var detailDateTitle: String {
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "ja_JP")
+        df.dateFormat = "M月d日(E)"
+        return df.string(from: viewModel.selectedDate)
+    }
+}
+
+/// 食事摂取と Run 消費カロリーの差・目標との関係
+private struct CalorieBalanceCard: View {
+    @ObservedObject var viewModel: HomeViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("カロリー収支")
+                .font(.headline)
+                .fontWeight(.bold)
+                .foregroundColor(.primary)
+
+            balanceRow(title: "食事の摂取", kcal: viewModel.totalCalories, accent: .primary)
+            balanceRow(title: "運動の消費（Run）", kcal: viewModel.runBurnedCaloriesKcal, accent: .orange)
+
+            Divider()
+
+            balanceRow(title: "ネット（摂取 − 運動）", kcal: viewModel.netCaloriesAfterRun, accent: .blue)
+
+            if let target = viewModel.targetCalories, target > 0 {
+                let margin = target - viewModel.netCaloriesAfterRun
+                HStack(alignment: .firstTextBaseline) {
+                    Text(margin >= 0 ? "1日の目標までの余白" : "1日の目標の超過")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text("\(String(format: "%.0f", abs(margin))) kcal")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(margin >= 0 ? .green : .red)
+                }
+            }
+
+            Text("運動の消費は、プロフィールに体重があり Run 保存時に kcal が入っている記録だけを合算しています。")
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.systemGray6))
+        )
+        .padding(.horizontal, 20)
+    }
+
+    private func balanceRow(title: String, kcal: Double, accent: Color) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(title)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            Spacer()
+            Text("\(String(format: "%.0f", kcal)) kcal")
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundColor(accent)
         }
     }
 }
