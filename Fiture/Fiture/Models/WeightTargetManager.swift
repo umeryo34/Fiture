@@ -24,6 +24,9 @@ class WeightTargetManager: ObservableObject {
     func createOrUpdateWeightEntry(userId: UUID, weight: Double, date: Date = Date()) async throws {
         _ = LocalDataStore.shared.upsertWeightEntry(userId: userId, date: date, weight: weight)
         try await fetchWeightEntry(userId: userId, date: date)
+        await MainActor.run {
+            NotificationCenter.default.post(name: .caloriesDataDidUpdate, object: nil)
+        }
     }
     
     // 体重を更新
@@ -31,6 +34,9 @@ class WeightTargetManager: ObservableObject {
         let targetDate = date ?? selectedDate
         _ = LocalDataStore.shared.upsertWeightEntry(userId: userId, date: targetDate, weight: weight)
         try await fetchWeightEntry(userId: userId, date: targetDate)
+        await MainActor.run {
+            NotificationCenter.default.post(name: .caloriesDataDidUpdate, object: nil)
+        }
     }
     
     // 体重を削除

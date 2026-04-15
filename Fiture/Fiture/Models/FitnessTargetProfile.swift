@@ -64,6 +64,10 @@ struct FitnessTargetProfile: Codable, Equatable {
     var gender: FitnessGender?
     var bodyGoal: FitnessBodyGoal?
     var activityLevel: FitnessActivityLevel?
+    /// 減量プラン用（任意）。期限までにこの体重へ向かう場合の 1 日不足分の参考に使う。
+    var goalTargetWeightKg: Double?
+    /// `goalTargetWeightKg` とセットで使う達成予定日（ローカル日の始まりで比較される）
+    var goalTargetDate: Date?
 
     var ageYears: Int? {
         guard let birthDate else { return nil }
@@ -73,20 +77,12 @@ struct FitnessTargetProfile: Codable, Equatable {
 
     var bmr: Double? {
         guard let weightKg, let heightCm, let ageYears, let gender else { return nil }
-        let base = 10.0 * weightKg + 6.25 * heightCm - 5.0 * Double(ageYears)
-        switch gender {
-        case .male:
-            return base + 5.0
-        case .female:
-            return base - 161.0
-        case .other, .preferNot:
-            return base - 78.0
-        }
+        return CalorieCalculator.bmr(weightKg: weightKg, heightCm: heightCm, ageYears: ageYears, gender: gender)
     }
 
     var tdee: Double? {
         guard let bmr, let activityLevel else { return nil }
-        return bmr * activityLevel.coefficient
+        return CalorieCalculator.tdee(bmr: bmr, activityLevel: activityLevel)
     }
 
     var isCompleted: Bool {

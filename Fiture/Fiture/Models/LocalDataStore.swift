@@ -337,9 +337,15 @@ final class LocalDataStore {
             return row.toDomain()
         }
         let profile = FitnessProfileStorage.load(userId: userId)
-        if profile.isCompleted, let tdee = profile.tdee {
+        if let result = CalorieCalculator.calculate(profile: profile, userId: userId, referenceDate: targetDate) {
             let now = Date()
-            return CaloriesTarget(userId: userId, date: targetDate, target: tdee.rounded(), createdAt: now, updatedAt: now)
+            return CaloriesTarget(
+                userId: userId,
+                date: targetDate,
+                target: result.targetCalories.rounded(),
+                createdAt: now,
+                updatedAt: now
+            )
         }
         return nil
     }
