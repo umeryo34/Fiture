@@ -13,6 +13,8 @@ struct TargetSettingView: View {
     @EnvironmentObject var authManager: AuthManager
     @Environment(\.dismiss) private var dismiss
     let allowsManualDismiss: Bool
+    /// 親の `NavigationStack` に載せるとき true（シートの二重ナビ防止・タイトルは親任せ）
+    let usesExternalNavigationStack: Bool
     private let onCompleted: (() -> Void)?
 
     @State private var birthDate: Date = Calendar.current.date(byAdding: .year, value: -25, to: Date()) ?? Date()
@@ -30,75 +32,21 @@ struct TargetSettingView: View {
     @State private var goalWeightTenthKg = 600
     @State private var goalTargetDate = Calendar.current.date(byAdding: .day, value: 56, to: Date()) ?? Date()
 
-    init(allowsManualDismiss: Bool = true, onCompleted: (() -> Void)? = nil) {
+    init(
+        allowsManualDismiss: Bool = true,
+        usesExternalNavigationStack: Bool = false,
+        onCompleted: (() -> Void)? = nil
+    ) {
         self.allowsManualDismiss = allowsManualDismiss
+        self.usesExternalNavigationStack = usesExternalNavigationStack
         self.onCompleted = onCompleted
     }
 
     var body: some View {
-        NavigationView {
-            VStack(spacing: 20) {
-                stepHeader
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
-
-                VStack(alignment: .leading, spacing: 16) {
-                    Text(currentStep.title)
-                        .font(.title2)
-                        .fontWeight(.bold)
-                    Text(currentStep.description)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                    stepContent
-                }
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-                .padding(20)
-                .background(Color(.systemGray6))
-                .clipShape(RoundedRectangle(cornerRadius: 16))
-                .padding(.horizontal, 20)
-
-                Spacer()
-
-                HStack(spacing: 12) {
-                    Button("戻る") {
-                        goToPreviousStep()
-                    }
-                    .font(.headline)
-                    .foregroundColor(canGoPrevious ? .primary : .secondary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Color(.systemGray5))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .disabled(!canGoPrevious)
-
-                    Button(isLastStep ? "保存" : "次へ") {
-                        handlePrimaryAction()
-                    }
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(canProceedCurrentStep ? Color.red : Color.gray)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .disabled(!canProceedCurrentStep)
-                }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 24)
-            }
-            .navigationTitle("基本情報")
-            .navigationBarTitleDisplayMode(.inline)
+        let core = wizardScrollContent
             .onChange(of: bodyGoal) { _, newGoal in
                 if newGoal != .lose {
                     goalTimelineEnabled = false
-                }
-            }
-            .toolbar {
-                if allowsManualDismiss {
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        Button("閉じる") {
-                            dismiss()
-                        }
-                    }
                 }
             }
             .onAppear {
@@ -123,6 +71,87 @@ struct TargetSettingView: View {
                 }
                 currentStep = firstIncompleteStep()
                 syncPickersFromProfile()
+            }
+
+        if usesExternalNavigationStack {
+            core
+        } else {
+            NavigationStack {
+                core
+                    .navigationTitle("基本情報")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        if allowsManualDismiss {
+                            ToolbarItem(placement: .navigationBarLeading) {
+                                Button("閉じる") {
+                                    dismiss()
+                                }
+                            }
+                        }
+                    }
+            }
+        }
+    }
+
+    private var wizardScrollContent: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                stepHeader
+                    .padding(.horizontal, 4)
+
+                VStack(alignment: .leading, spacing: 16) {
+                    Text(currentStep.title)
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(currentStep.description)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    stepContent
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
+                .padding(20)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+                .background(Color(.systemGray6))
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+
+                Color.clear.frame(height: 16)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 16)
+            .padding(.bottom, 8)
+        }
+        .scrollIndicators(.visible)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: 0) {
+                Divider()
+                HStack(spacing: 12) {
+                    Button("戻る") {
+                        goToPreviousStep()
+                    }
+                    .font(.headline)
+                    .foregroundColor(canGoPrevious ? .primary : .secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color(.systemGray5))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .disabled(!canGoPrevious)
+
+                    Button(isLastStep ? "保存" : "次へ") {
+                        handlePrimaryAction()
+                    }
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(canProceedCurrentStep ? Color.red : Color.gray)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .disabled(!canProceedCurrentStep)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .background(Color(.systemBackground))
             }
         }
     }
@@ -218,6 +247,8 @@ struct TargetSettingView: View {
                                 Text("\(level.descriptionText) / 係数 \(String(format: "%.3f", level.coefficient))")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.leading)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
                             Spacer()
                             if activityLevel == level {
@@ -306,7 +337,11 @@ struct TargetSettingView: View {
             profile: previewProfile,
             userId: authManager.currentUser?.id
         ) {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("カロリー目安")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
                 Text("推定BMR: \(Int(r.bmr.rounded())) kcal")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
@@ -331,6 +366,15 @@ struct TargetSettingView: View {
                     .foregroundColor(.secondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.systemBackground))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color(.separator).opacity(0.5), lineWidth: 1)
+            )
             .padding(.top, 8)
         }
     }

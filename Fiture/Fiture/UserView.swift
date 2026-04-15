@@ -61,7 +61,7 @@ struct UserView: View {
                             showingEditProfile = true
                         }
                         
-                        SettingRow(icon: "target", title: "フィットネスプロフィール", color: .red) {
+                        SettingRow(icon: "target", title: "目標を変更", color: .red) {
                             showingFitnessProfile = true
                         }
                         
@@ -121,7 +121,7 @@ struct UserView: View {
             ThemeSettingView()
         }
         .sheet(isPresented: $showingFitnessProfile) {
-            TargetSettingView()
+            FitnessProfileGoalSettingView()
                 .environmentObject(authManager)
         }
     }
