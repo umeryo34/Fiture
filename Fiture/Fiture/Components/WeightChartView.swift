@@ -23,10 +23,57 @@ struct WeightChartView: View {
         guard !chartData.isEmpty else { return 0 }
         return chartData.map { $0.weight }.max() ?? 0
     }
-    
-    private var weightRange: Double {
-        let range = maxWeight - minWeight
-        return range > 0 ? range : 10 // 最小範囲を10kgに設定
+
+    /// 縦軸: 0.2kg 刻みを基本にし、メモリ本数が多すぎるときだけ 0.4, 0.6 … に広げる
+    private static let yAxisPreferredStep: Double = 0.2
+    private static let yAxisMaxTicks: Int = 11
+
+    private var yAxisLayout: (minY: Double, maxY: Double, step: Double, ticksDescending: [Double]) {
+        guard !chartData.isEmpty else {
+            return (0, 0.2, 0.2, [0.2, 0])
+        }
+        let pad = Self.yAxisPreferredStep
+        var step = Self.yAxisPreferredStep
+
+        if abs(maxWeight - minWeight) < 1e-9 {
+            let c = minWeight
+            let lo = c - 0.4
+            let hi = c + 0.4
+            var ascending: [Double] = []
+            var t = lo
+            while t <= hi + 1e-9 {
+                ascending.append((t * 500).rounded() / 500)
+                t += Self.yAxisPreferredStep
+            }
+            return (lo, hi, Self.yAxisPreferredStep, Array(ascending.reversed()))
+        }
+
+        var lo = floor((minWeight - pad) / step) * step
+        var hi = ceil((maxWeight + pad) / step) * step
+        if hi <= lo { hi = lo + step }
+
+        var tickCount = Int((hi - lo) / step + 0.5) + 1
+        while tickCount > Self.yAxisMaxTicks && step < 50 {
+            step += Self.yAxisPreferredStep
+            lo = floor((minWeight - pad) / step) * step
+            hi = ceil((maxWeight + pad) / step) * step
+            if hi <= lo { hi = lo + step }
+            tickCount = Int((hi - lo) / step + 0.5) + 1
+        }
+
+        var ascending: [Double] = []
+        var v = lo
+        while v <= hi + 1e-9 {
+            ascending.append((v * 500).rounded() / 500) // 0.2 刻みの丸め誤差抑制
+            v += step
+        }
+        return (lo, hi, step, Array(ascending.reversed()))
+    }
+
+    private var chartYRange: Double {
+        let y = yAxisLayout
+        let r = y.maxY - y.minY
+        return r > 1e-9 ? r : Self.yAxisPreferredStep
     }
     
     // 表示する日付のインデックスを計算（適切に間引く）
@@ -74,6 +121,11 @@ struct WeightChartView: View {
             .frame(height: 200)
             .frame(maxWidth: .infinity)
         } else {
+            let yLayout = yAxisLayout
+            let yMin = yLayout.minY
+            let yTicks = yLayout.ticksDescending
+            let yRange = chartYRange
+
             VStack(alignment: .leading, spacing: 12) {
                 Text("体重の変化")
                     .font(.headline)
@@ -82,40 +134,54 @@ struct WeightChartView: View {
                 
                 // グラフエリア
                 HStack(alignment: .top, spacing: 8) {
-                    // 縦軸（体重の値）
-                    VStack(alignment: .trailing, spacing: 0) {
-                        ForEach(0..<5) { i in
-                            let weight = maxWeight - (weightRange * Double(i) / 4.0)
-                            Text(String(format: "%.1f", weight))
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundColor(.primary)
-                                .frame(height: 40)
+                    // 縦軸（0.2kg 基準のメモリ）
+                    GeometryReader { labelGeo in
+                        let h = labelGeo.size.height
+                        let n = yTicks.count
+                        ZStack(alignment: .topLeading) {
+                            ForEach(Array(yTicks.enumerated()), id: \.offset) { i, w in
+                                let y = n <= 1 ? h / 2 : h * CGFloat(i) / CGFloat(n - 1)
+                                Text(String(format: "%.1f", w))
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(.primary)
+                                    .position(x: labelGeo.size.width - 8, y: y)
+                            }
                         }
                     }
-                    .frame(width: 50)
-                    .padding(.trailing, 4)
+                    .frame(width: 52, height: 200)
+                    .padding(.trailing, 2)
                     
                     // グラフ本体
                     VStack(spacing: 0) {
                         GeometryReader { geometry in
+                            let h = geometry.size.height
+                            let w = geometry.size.width
+                            let tickCount = yTicks.count
                             ZStack {
-                                // 背景グリッド（横線）
+                                // 背景グリッド（横線＝メモリ位置に一致）
                                 Path { path in
-                                    for i in 0...4 {
-                                        let y = geometry.size.height * CGFloat(i) / 4
+                                    guard tickCount > 0 else { return }
+                                    if tickCount == 1 {
+                                        let y = h / 2
                                         path.move(to: CGPoint(x: 0, y: y))
-                                        path.addLine(to: CGPoint(x: geometry.size.width, y: y))
+                                        path.addLine(to: CGPoint(x: w, y: y))
+                                    } else {
+                                        for i in 0..<tickCount {
+                                            let y = h * CGFloat(i) / CGFloat(tickCount - 1)
+                                            path.move(to: CGPoint(x: 0, y: y))
+                                            path.addLine(to: CGPoint(x: w, y: y))
+                                        }
                                     }
                                 }
-                                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                                .stroke(Color.gray.opacity(0.25), lineWidth: 1)
                                 
                                 // 折れ線グラフ
                                 if chartData.count > 1 {
                                     Path { path in
                                         for (index, data) in chartData.enumerated() {
-                                            let x = geometry.size.width * CGFloat(index) / CGFloat(chartData.count - 1)
-                                            let normalizedWeight = (data.weight - minWeight) / weightRange
-                                            let y = geometry.size.height * (1 - normalizedWeight)
+                                            let x = w * CGFloat(index) / CGFloat(chartData.count - 1)
+                                            let normalized = (data.weight - yMin) / yRange
+                                            let y = h * (1 - CGFloat(normalized))
                                             
                                             if index == 0 {
                                                 path.move(to: CGPoint(x: x, y: y))
@@ -128,9 +194,9 @@ struct WeightChartView: View {
                                     
                                     // データポイント
                                     ForEach(Array(chartData.enumerated()), id: \.offset) { index, data in
-                                        let x = geometry.size.width * CGFloat(index) / CGFloat(chartData.count - 1)
-                                        let normalizedWeight = (data.weight - minWeight) / weightRange
-                                        let y = geometry.size.height * (1 - normalizedWeight)
+                                        let x = w * CGFloat(index) / CGFloat(chartData.count - 1)
+                                        let normalized = (data.weight - yMin) / yRange
+                                        let y = h * (1 - CGFloat(normalized))
                                         
                                         Circle()
                                             .fill(Color.purple)
@@ -138,14 +204,13 @@ struct WeightChartView: View {
                                             .position(x: x, y: y)
                                     }
                                 } else if chartData.count == 1 {
-                                    // データが1つだけの場合
-                                    let normalizedWeight = (chartData[0].weight - minWeight) / weightRange
-                                    let y = geometry.size.height * (1 - normalizedWeight)
+                                    let normalized = (chartData[0].weight - yMin) / yRange
+                                    let y = h * (1 - CGFloat(normalized))
                                     
                                     Circle()
                                         .fill(Color.purple)
                                         .frame(width: 8, height: 8)
-                                        .position(x: geometry.size.width / 2, y: y)
+                                        .position(x: w / 2, y: y)
                                 }
                             }
                         }

@@ -13,6 +13,8 @@ struct TargetSettingView: View {
     @EnvironmentObject var authManager: AuthManager
     @Environment(\.dismiss) private var dismiss
     let allowsManualDismiss: Bool
+    /// 親の `NavigationStack` に載せるとき true（シートの二重ナビ防止・タイトルは親任せ）
+    let usesExternalNavigationStack: Bool
     private let onCompleted: (() -> Void)?
 
     @State private var birthDate: Date = Calendar.current.date(byAdding: .year, value: -25, to: Date()) ?? Date()
@@ -25,36 +27,105 @@ struct TargetSettingView: View {
     @State private var didLoad = false
     @State private var heightPickerCm = 170
     @State private var weightTenthKg = 600
+    /// 減量時のみ: 目標体重・期限から 1 日の不足分を逆算（任意）
+    @State private var goalTimelineEnabled = false
+    @State private var goalWeightTenthKg = 600
+    @State private var goalTargetDate = Calendar.current.date(byAdding: .day, value: 56, to: Date()) ?? Date()
 
-    init(allowsManualDismiss: Bool = true, onCompleted: (() -> Void)? = nil) {
+    init(
+        allowsManualDismiss: Bool = true,
+        usesExternalNavigationStack: Bool = false,
+        onCompleted: (() -> Void)? = nil
+    ) {
         self.allowsManualDismiss = allowsManualDismiss
+        self.usesExternalNavigationStack = usesExternalNavigationStack
         self.onCompleted = onCompleted
     }
 
     var body: some View {
-        NavigationView {
-            VStack(spacing: 20) {
+        let core = wizardScrollContent
+            .onChange(of: bodyGoal) { _, newGoal in
+                if newGoal != .lose {
+                    goalTimelineEnabled = false
+                }
+            }
+            .onAppear {
+                guard !didLoad else { return }
+                didLoad = true
+                let p = FitnessProfileStorage.load(userId: authManager.currentUser?.id)
+                birthDate = p.birthDate ?? birthDate
+                heightCm = p.heightCm
+                weightKg = p.weightKg
+                gender = p.gender
+                bodyGoal = p.bodyGoal
+                activityLevel = p.activityLevel
+                if let gw = p.goalTargetWeightKg {
+                    goalWeightTenthKg = min(3000, max(200, Int((gw * 10).rounded())))
+                    goalTimelineEnabled = p.goalTargetDate != nil
+                }
+                if let gd = p.goalTargetDate {
+                    let cal = Calendar.current
+                    let start = cal.date(byAdding: .day, value: 7, to: cal.startOfDay(for: Date())) ?? Date()
+                    let end = cal.date(byAdding: .day, value: 365 * 3, to: Date()) ?? Date()
+                    goalTargetDate = min(max(gd, start), end)
+                }
+                currentStep = firstIncompleteStep()
+                syncPickersFromProfile()
+            }
+
+        if usesExternalNavigationStack {
+            core
+        } else {
+            NavigationStack {
+                core
+                    .navigationTitle("基本情報")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        if allowsManualDismiss {
+                            ToolbarItem(placement: .navigationBarLeading) {
+                                Button("閉じる") {
+                                    dismiss()
+                                }
+                            }
+                        }
+                    }
+            }
+        }
+    }
+
+    private var wizardScrollContent: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
                 stepHeader
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
+                    .padding(.horizontal, 4)
 
                 VStack(alignment: .leading, spacing: 16) {
                     Text(currentStep.title)
                         .font(.title2)
                         .fontWeight(.bold)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text(currentStep.description)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                     stepContent
+                        .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
-                .frame(maxWidth: .infinity, alignment: .topLeading)
                 .padding(20)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
                 .background(Color(.systemGray6))
                 .clipShape(RoundedRectangle(cornerRadius: 16))
-                .padding(.horizontal, 20)
 
-                Spacer()
-
+                Color.clear.frame(height: 16)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 16)
+            .padding(.bottom, 8)
+        }
+        .scrollIndicators(.visible)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: 0) {
+                Divider()
                 HStack(spacing: 12) {
                     Button("戻る") {
                         goToPreviousStep()
@@ -79,31 +150,8 @@ struct TargetSettingView: View {
                     .disabled(!canProceedCurrentStep)
                 }
                 .padding(.horizontal, 20)
-                .padding(.bottom, 24)
-            }
-            .navigationTitle("基本情報")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                if allowsManualDismiss {
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        Button("閉じる") {
-                            dismiss()
-                        }
-                    }
-                }
-            }
-            .onAppear {
-                guard !didLoad else { return }
-                didLoad = true
-                let p = FitnessProfileStorage.load(userId: authManager.currentUser?.id)
-                birthDate = p.birthDate ?? birthDate
-                heightCm = p.heightCm
-                weightKg = p.weightKg
-                gender = p.gender
-                bodyGoal = p.bodyGoal
-                activityLevel = p.activityLevel
-                currentStep = firstIncompleteStep()
-                syncPickersFromProfile()
+                .padding(.vertical, 12)
+                .background(Color(.systemBackground))
             }
         }
     }
@@ -199,6 +247,8 @@ struct TargetSettingView: View {
                                 Text("\(level.descriptionText) / 係数 \(String(format: "%.3f", level.coefficient))")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.leading)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
                             Spacer()
                             if activityLevel == level {
@@ -213,12 +263,119 @@ struct TargetSettingView: View {
                     .buttonStyle(.plain)
                 }
 
-                if let tdee = estimatedProfile.tdee {
-                    Text("推定TDEE: \(Int(tdee.rounded())) kcal")
-                        .font(.subheadline)
+                if bodyGoal == .lose {
+                    Toggle(isOn: $goalTimelineEnabled) {
+                        Text("目標体重と達成日からペースを決める（任意）")
+                            .font(.subheadline)
+                    }
+                    .onChange(of: goalTimelineEnabled) { _, isOn in
+                        if isOn {
+                            goalWeightTenthKg = weightTenthKg
+                        }
+                    }
+
+                    if goalTimelineEnabled {
+                        VStack(alignment: .leading, spacing: 10) {
+                            DatePicker(
+                                "達成予定日",
+                                selection: $goalTargetDate,
+                                in: goalDateRange,
+                                displayedComponents: .date
+                            )
+                            .datePickerStyle(.compact)
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("目標体重")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Picker("目標体重", selection: $goalWeightTenthKg) {
+                                    ForEach(Self.weightTenthRange, id: \.self) { tenth in
+                                        Text(String(format: "%.1f kg", Double(tenth) / 10)).tag(tenth)
+                                    }
+                                }
+                                .pickerStyle(.wheel)
+                                .frame(height: 120)
+                            }
+                            Text("1kg の体脂肪相当は約 7200kcal とみなし、期限までに必要な 1 日の不足分を計算します（TDEE−500 より大きいとき採用）。")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(.top, 4)
+                    }
+                }
+
+                caloriePreviewSection
+            }
+        }
+    }
+
+    private var goalDateRange: ClosedRange<Date> {
+        let cal = Calendar.current
+        let start = cal.date(byAdding: .day, value: 7, to: cal.startOfDay(for: Date())) ?? Date()
+        let end = cal.date(byAdding: .day, value: 365 * 3, to: Date()) ?? Date()
+        return start ... end
+    }
+
+    private func profileMergingGoals(base: FitnessTargetProfile) -> FitnessTargetProfile {
+        FitnessTargetProfile(
+            birthDate: base.birthDate,
+            heightCm: base.heightCm,
+            weightKg: base.weightKg,
+            gender: base.gender,
+            bodyGoal: base.bodyGoal,
+            activityLevel: base.activityLevel,
+            goalTargetWeightKg: (bodyGoal == .lose && goalTimelineEnabled) ? Double(goalWeightTenthKg) / 10 : nil,
+            goalTargetDate: (bodyGoal == .lose && goalTimelineEnabled) ? goalTargetDate : nil
+        )
+    }
+
+    @ViewBuilder
+    private var caloriePreviewSection: some View {
+        let previewProfile = profileMergingGoals(base: estimatedProfile)
+        if let r = CalorieCalculator.calculate(
+            profile: previewProfile,
+            userId: authManager.currentUser?.id
+        ) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("カロリー目安")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+                Text("推定BMR: \(Int(r.bmr.rounded())) kcal")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                Text("推定TDEE: \(Int(r.tdee.rounded())) kcal")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                Text("1日の摂取目標: \(Int(r.targetCalories.rounded())) kcal")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                if let d = r.weightGoalDailyDeficit {
+                    Text("目標体重からの不足ペース: 約 \(Int(d.rounded())) kcal/日")
+                        .font(.caption)
                         .foregroundColor(.secondary)
                 }
+                if r.weeklyTrendAdjustmentKcal != 0 {
+                    Text("直近の体重トレンド補正: \(r.weeklyTrendAdjustmentKcal > 0 ? "+" : "")\(Int(r.weeklyTrendAdjustmentKcal.rounded())) kcal/日")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Text("タンパク質の目安: 約 \(Int(r.suggestedProteinGramsPerDay.rounded())) g / 日（体重×1.8）")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.systemBackground))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color(.separator).opacity(0.5), lineWidth: 1)
+            )
+            .padding(.top, 8)
         }
     }
 
@@ -311,7 +468,9 @@ struct TargetSettingView: View {
             weightKg: Double(weightTenthKg) / 10,
             gender: gender,
             bodyGoal: bodyGoal,
-            activityLevel: activityLevel
+            activityLevel: activityLevel,
+            goalTargetWeightKg: nil,
+            goalTargetDate: nil
         )
     }
 
@@ -322,7 +481,9 @@ struct TargetSettingView: View {
             weightKg: weightKg,
             gender: gender,
             bodyGoal: bodyGoal,
-            activityLevel: activityLevel
+            activityLevel: activityLevel,
+            goalTargetWeightKg: nil,
+            goalTargetDate: nil
         )
     }
 
@@ -338,13 +499,15 @@ struct TargetSettingView: View {
             weightKg: weightKg,
             gender: gender,
             bodyGoal: bodyGoal,
-            activityLevel: activityLevel
+            activityLevel: activityLevel,
+            goalTargetWeightKg: (bodyGoal == .lose && goalTimelineEnabled) ? Double(goalWeightTenthKg) / 10 : nil,
+            goalTargetDate: (bodyGoal == .lose && goalTimelineEnabled) ? goalTargetDate : nil
         )
         FitnessProfileStorage.save(profile, userId: authManager.currentUser?.id)
 
         if let userId = authManager.currentUser?.id,
-           let tdee = profile.tdee {
-            let targetKcal = tdee.rounded()
+           let result = CalorieCalculator.calculate(profile: profile, userId: userId) {
+            let targetKcal = result.targetCalories.rounded()
             _ = LocalDataStore.shared.upsertCaloriesTarget(userId: userId, date: Date(), target: targetKcal)
             NotificationCenter.default.post(name: .caloriesDataDidUpdate, object: nil)
         }
