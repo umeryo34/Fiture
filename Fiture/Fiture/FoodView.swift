@@ -29,35 +29,34 @@ private struct FoodViewContent: View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Button(action: {
-                    viewModel.showingDatePicker = true
-                }) {
-                    Image(systemName: "calendar")
-                        .font(.system(size: 22))
-                        .foregroundColor(.primary)
-                }
-                
                 Spacer()
-                    Text("こんにちは \(viewModel.userName)さん")
-                    .font(.title3)
+                NavigationLink {
+                    CalendarView(selectedDate: $viewModel.selectedDate) { newDate in
+                        viewModel.selectedDate = newDate
+                        Task {
+                            await viewModel.fetchCaloriesDataForDate(newDate)
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 16, weight: .semibold))
+                        Text("カレンダーに移動")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.secondary)
+                    }
                     .foregroundColor(.primary)
-                    .lineLimit(1)
-                Spacer()
-                
-                Button(action: {
-                    viewModel.showingSearch = true
-                }) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 22))
-                        .foregroundColor(.primary)
-                        .padding(.trailing, 15)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 11)
+                    .background(Color(.systemGray6))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                
-                Button(action: {}) {
-                    Image(systemName: "bell")
-                        .font(.system(size: 22))
-                        .foregroundColor(.primary)
-                }
+                .buttonStyle(.plain)
             }
             .padding(.horizontal, 20)
             .padding(.top, 20)
@@ -224,14 +223,6 @@ private struct FoodViewContent: View {
                     userId: userId,
                     date: viewModel.selectedDate
                 )
-            }
-        }
-        .sheet(isPresented: $viewModel.showingDatePicker) {
-            DatePickerSheet(selectedDate: $viewModel.selectedDate) { newDate in
-                viewModel.selectedDate = newDate
-                Task {
-                    await viewModel.fetchCaloriesDataForDate(newDate)
-                }
             }
         }
         .sheet(isPresented: $viewModel.showingSearch) {
