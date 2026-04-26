@@ -111,14 +111,14 @@ private struct FoodViewContent: View {
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                         }
                         
-                        // 目標設定ボタン
-                        Button(action: {
-                            viewModel.showingTargetSetting = true
-                        }) {
+                        // 詳細ボタン
+                        NavigationLink {
+                            FoodDayDetailView(viewModel: viewModel)
+                        } label: {
                             HStack {
-                                Image(systemName: "pencil")
+                                Image(systemName: "list.bullet.rectangle")
                                     .font(.system(size: 14))
-                                Text("目標を変更")
+                                Text("詳細")
                                     .font(.subheadline)
                             }
                             .foregroundColor(.black)
@@ -127,6 +127,7 @@ private struct FoodViewContent: View {
                             .background(Color.gray.opacity(0.1))
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                         }
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.bottom, 10)
@@ -156,14 +157,14 @@ private struct FoodViewContent: View {
                         }
                         .padding(.horizontal, 20)
                         
-                        // カロリー目標設定ボタン
-                        Button(action: {
-                            viewModel.showingTargetSetting = true
-                        }) {
+                        // 詳細ボタン
+                        NavigationLink {
+                            FoodDayDetailView(viewModel: viewModel)
+                        } label: {
                             HStack {
-                                Image(systemName: "target")
+                                Image(systemName: "list.bullet.rectangle")
                                     .font(.system(size: 16))
-                                Text("カロリー目標を設定")
+                                Text("詳細")
                                     .font(.headline)
                             }
                             .foregroundColor(.white)
@@ -172,6 +173,7 @@ private struct FoodViewContent: View {
                             .background(Color.black)
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
+                        .buttonStyle(.plain)
                         .padding(.horizontal, 20)
                     }
                 }
@@ -181,40 +183,8 @@ private struct FoodViewContent: View {
             CalorieBalanceCard(viewModel: viewModel)
                 .padding(.top, 12)
 
-            NavigationLink {
-                FoodDayDetailView(viewModel: viewModel)
-            } label: {
-                HStack {
-                    Text("詳細")
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.primary)
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
-                .frame(maxWidth: .infinity)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color(.systemGray6))
-                )
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-            }
-            .buttonStyle(.plain)
-
             Spacer()
             }
-        }
-        .sheet(isPresented: $viewModel.showingTargetSetting) {
-            CaloriesTargetSettingView(
-                caloriesTargetManager: viewModel.getCaloriesTargetManager(),
-                initialTarget: viewModel.targetCalories
-            )
-            .environmentObject(authManager)
         }
         .sheet(isPresented: $viewModel.showingCaloriesInput) {
             if let userId = authManager.currentUser?.id {
