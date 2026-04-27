@@ -14,48 +14,10 @@ struct UserView: View {
     @State private var showingThemeSetting = false
     @State private var showingFitnessProfile = false
     
-    private var userName: String {
-        authManager.currentUser?.name ?? "ユーザー"
-    }
-    
-    private var userEmail: String {
-        authManager.currentUser?.email ?? "user@example.com"
-    }
-    
     var body: some View {
         NavigationView {
             ScrollView {
                 VStack(spacing: 30) {
-                    VStack(spacing: 15) {
-                        // プロフィール画像
-                        if let profileImageUrl = authManager.currentUser?.profileImageUrl, !profileImageUrl.isEmpty {
-                            AsyncImage(url: URL(string: profileImageUrl)) { image in
-                                image
-                                    .resizable()
-                                    .scaledToFill()
-                            } placeholder: {
-                                Image(systemName: "person.circle.fill")
-                                    .font(.system(size: 100))
-                                    .foregroundColor(.purple)
-                            }
-                            .frame(width: 100, height: 100)
-                            .clipShape(Circle())
-                        } else {
-                            Image(systemName: "person.circle.fill")
-                                .font(.system(size: 100))
-                                .foregroundColor(.purple)
-                        }
-                        
-                        Text(userName)
-                            .font(.title)
-                            .fontWeight(.bold)
-                        
-                        Text(userEmail)
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.top, 20)
-                    
                     VStack(spacing: 0) {
                         SettingRow(icon: "person.circle", title: "プロフィール編集", color: .blue) {
                             showingEditProfile = true
