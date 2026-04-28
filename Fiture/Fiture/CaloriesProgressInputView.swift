@@ -266,6 +266,8 @@ struct CaloriesProgressInputView: View {
                     fatValue = ""
                     carbsValue = ""
                     suggestedFoodEntries = []
+                    // 追加完了後は FoodView に戻す
+                    dismiss()
                 }
             } catch {
                 await MainActor.run {
