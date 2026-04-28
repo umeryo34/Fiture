@@ -23,6 +23,7 @@ struct RunMapView: View {
     @State private var elapsedTime: TimeInterval = 0
     @State private var timer: Timer?
     @State private var showingSaveConfirmation = false
+    @State private var showingCompletedMessage = false
     @State private var isLoading = false
     @State private var errorMessage = ""
     @State private var showError = false
@@ -182,27 +183,59 @@ struct RunMapView: View {
                                 .multilineTextAlignment(.center)
                         }
                         
-                        // 開始/停止ボタン
-                        Button(action: {
-                            if isRunning {
-                                stopRun()
-                            } else {
-                                startRun()
+                        if isRunning {
+                            HStack(spacing: 12) {
+                                Button(action: {
+                                    pauseRun()
+                                }) {
+                                    HStack {
+                                        Image(systemName: "pause.fill")
+                                            .font(.system(size: 18))
+                                        Text("中断")
+                                            .font(.headline)
+                                    }
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color.orange)
+                                    .cornerRadius(12)
+                                }
+
+                                Button(action: {
+                                    endRun()
+                                }) {
+                                    HStack {
+                                        Image(systemName: "stop.fill")
+                                            .font(.system(size: 18))
+                                        Text("終了")
+                                            .font(.headline)
+                                    }
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .background(Color.red)
+                                    .cornerRadius(12)
+                                }
                             }
-                        }) {
-                            HStack {
-                                Image(systemName: isRunning ? "stop.fill" : "play.fill")
-                                    .font(.system(size: 20))
-                                Text(isRunning ? "停止" : "開始")
-                                    .font(.headline)
+                            .padding(.horizontal)
+                        } else {
+                            Button(action: {
+                                resumeOrStartRun()
+                            }) {
+                                HStack {
+                                    Image(systemName: elapsedTime > 0 ? "play.circle.fill" : "play.fill")
+                                        .font(.system(size: 20))
+                                    Text(elapsedTime > 0 ? "再開" : "開始")
+                                        .font(.headline)
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color.blue)
+                                .cornerRadius(12)
                             }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(isRunning ? Color.red : Color.blue)
-                            .cornerRadius(12)
+                            .padding(.horizontal)
                         }
-                        .padding(.horizontal)
                     }
                     .padding(.bottom, 30)
                 }
@@ -219,6 +252,13 @@ struct RunMapView: View {
                 Button("OK") { }
             } message: {
                 Text(errorMessage)
+            }
+            .alert("お疲れ様でした！", isPresented: $showingCompletedMessage) {
+                Button("OK") {
+                    dismiss()
+                }
+            } message: {
+                Text("Runを保存しました。")
             }
     }
     
@@ -255,6 +295,7 @@ struct RunMapView: View {
     private func startRun() {
         isRunning = true
         startTime = Date()
+        elapsedTime = 0
         userTrackingMode = .follow
         locationManager.startRun()
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
@@ -264,11 +305,35 @@ struct RunMapView: View {
         }
     }
     
-    private func stopRun() {
+    private func resumeOrStartRun() {
+        if elapsedTime > 0 {
+            resumeRun()
+        } else {
+            startRun()
+        }
+    }
+
+    private func resumeRun() {
+        isRunning = true
+        startTime = Date().addingTimeInterval(-elapsedTime)
+        userTrackingMode = .follow
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+            if let start = startTime {
+                elapsedTime = Date().timeIntervalSince(start)
+            }
+        }
+    }
+
+    private func pauseRun() {
         isRunning = false
         userTrackingMode = .none
         timer?.invalidate()
         timer = nil
+    }
+
+    private func endRun() {
+        pauseRun()
         locationManager.stopRun()
         showingSaveConfirmation = true
     }
@@ -318,7 +383,17 @@ struct RunMapView: View {
         NotificationCenter.default.post(name: .init("RunRecordDidSave"), object: nil)
 
         isLoading = false
-        dismiss()
+        resetRunSessionState()
+        showingCompletedMessage = true
+    }
+
+    private func resetRunSessionState() {
+        isRunning = false
+        startTime = nil
+        elapsedTime = 0
+        timer?.invalidate()
+        timer = nil
+        userTrackingMode = .none
     }
 }
 
