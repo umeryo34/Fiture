@@ -22,24 +22,8 @@ class MuscleRecordViewModel: ObservableObject {
     private let trainingTargetManager: TrainingTargetManager
     weak var authManager: AuthManager?
     
-    // 部位ごとの種目リスト
     var availableExercises: [String] {
-        switch muscleType {
-        case .chest:
-            return ["ベンチプレス", "インクラインベンチプレス", "ダンベルベンチプレス", "ディップス", "荷重ディップス", "ダンベルフライ", "インクラインダンベルフライ", "腕立て伏せ", "ナロープッシュアップ", "チェストプレスマシン", "ペックデッキフライ"]
-        case .back:
-            return ["グッドモーニング", "デッドリフト", "プルアップ", "ベントオーバーロー", "ラットプルダウン", "シーテッドロウマシン", "シーテッドケーブルロウ", "ダンベルロウ", "ワンハンドダンベルロウ"]
-        case .abs:
-            return ["腹筋(クランチ)", "Vアップ", "プランク", "レッグレイズ", "レッグレイズマシン"]
-        case .arms:
-            return ["バーベルカール", "ダンベルカール", "ダンベルリストカール", "プリーチャーカールマシン", "ケーブルカール"]
-        case .triceps:
-            return ["ダンベルフレンチプレス", "バーベルフレンチプレス", "クローズグリップベンチプレス", "ケーブルトライセプスエクステンション"]
-        case .legs:
-            return ["スクワット", "ハーフスクワット", "レッグプレス", "レッグカール", "レッグエクステンション", "シーテッドカーフレイズ", "ブルガリアンスクワット"]
-        case .glutes:
-            return []
-        }
+        MuscleExerciseCatalog.exercises(for: muscleType)
     }
     
     // 腹筋は重量なし

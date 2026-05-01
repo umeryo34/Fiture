@@ -505,6 +505,14 @@ final class LocalDataStore {
             .map { $0.toDomain() }
     }
 
+    /// 指定日の筋トレ記録をすべて取得（部位ハイライト用）
+    func trainingRecords(onDate date: Date, userId: UUID) -> [TrainingRecord] {
+        let targetDate = startOfDay(date)
+        return loadState().trainingRecords
+            .filter { $0.userId == userId && Calendar.current.isDate($0.date, inSameDayAs: targetDate) }
+            .map { $0.toDomain() }
+    }
+
     func upsertTrainingRecord(
         userId: UUID,
         date: Date,
