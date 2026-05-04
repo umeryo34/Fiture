@@ -127,12 +127,6 @@ struct WeightChartView: View {
             let yRange = chartYRange
 
             VStack(alignment: .leading, spacing: 12) {
-                Text("体重の変化")
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .padding(.horizontal, 20)
-                
-                // グラフエリア
                 HStack(alignment: .top, spacing: 8) {
                     // 縦軸（0.2kg 基準のメモリ）
                     GeometryReader { labelGeo in
@@ -144,12 +138,12 @@ struct WeightChartView: View {
                                 Text(String(format: "%.1f", w))
                                     .font(.system(size: 11, weight: .medium))
                                     .foregroundColor(.primary)
-                                    .position(x: labelGeo.size.width - 8, y: y)
+                                    .position(x: labelGeo.size.width - 12, y: y)
                             }
                         }
                     }
-                    .frame(width: 52, height: 200)
-                    .padding(.trailing, 2)
+                    .frame(width: 36, height: 200)
+                    .padding(.trailing, 4)
                     
                     // グラフ本体
                     VStack(spacing: 0) {
@@ -244,27 +238,9 @@ struct WeightChartView: View {
                         }
                     }
                 }
-                .padding(.horizontal, 20)
-                
-                // 凡例と範囲表示
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("最小: \(String(format: "%.1f", minWeight)) kg")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Text("最大: \(String(format: "%.1f", maxWeight)) kg")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    Spacer()
-                    
-                    Text("\(weightEntries.count)件の記録")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, 16)
             }
+            .padding(.top, 8)
         }
     }
     

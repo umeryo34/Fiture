@@ -13,6 +13,7 @@ class TrainingBodyViewModel: ObservableObject {
     @Published var showingMuscleRecord = false
     @Published var selectedMuscleType: InteractiveBodyModelView.MuscleType?
     @Published var trainingTargets: [TrainingTarget] = []
+    @Published var muscleVisualStates: [InteractiveBodyModelView.MuscleType: MuscleVisualState] = [:]
     @Published var isLoading = false
     
     private let trainingTargetManager = TrainingTargetManager()
@@ -45,5 +46,46 @@ class TrainingBodyViewModel: ObservableObject {
     
     func getTrainingTargetManager() -> TrainingTargetManager {
         return trainingTargetManager
+    }
+
+    /// 今日・昨日の記録から部位の色状態を更新（USDZ ノード名と種目の対応は MuscleExerciseCatalog / MuscleSceneAppearance）
+    func refreshMuscleHighlightStates() async {
+        guard let userId = authManager?.currentUser?.id else {
+            muscleVisualStates = [:]
+            return
+        }
+        let cal = Calendar.current
+        let today = Date()
+        guard let yesterday = cal.date(byAdding: .day, value: -1, to: cal.startOfDay(for: today)) else {
+            return
+        }
+
+        let todayRecords = LocalDataStore.shared.trainingRecords(onDate: today, userId: userId)
+        let yesterdayRecords = LocalDataStore.shared.trainingRecords(onDate: yesterday, userId: userId)
+
+        var musclesToday = Set<InteractiveBodyModelView.MuscleType>()
+        for r in todayRecords {
+            if let m = MuscleExerciseCatalog.muscleType(forExerciseType: r.exerciseType) {
+                musclesToday.insert(m)
+            }
+        }
+        var musclesYesterday = Set<InteractiveBodyModelView.MuscleType>()
+        for r in yesterdayRecords {
+            if let m = MuscleExerciseCatalog.muscleType(forExerciseType: r.exerciseType) {
+                musclesYesterday.insert(m)
+            }
+        }
+
+        var next: [InteractiveBodyModelView.MuscleType: MuscleVisualState] = [:]
+        for muscle in InteractiveBodyModelView.MuscleType.allCases {
+            if musclesToday.contains(muscle) {
+                next[muscle] = .trainedToday
+            } else if musclesYesterday.contains(muscle) {
+                next[muscle] = .fatigued
+            } else {
+                next[muscle] = .unused
+            }
+        }
+        muscleVisualStates = next
     }
 }

@@ -23,6 +23,7 @@ struct RunGymView: View {
     @State private var totalDistanceKm: Double = 0
 
     @State private var showingSaveConfirmation = false
+    @State private var showingCompletedMessage = false
     @State private var isLoading = false
     @State private var errorMessage = ""
     @State private var showError = false
@@ -136,24 +137,56 @@ struct RunGymView: View {
                             .multilineTextAlignment(.center)
                     }
 
-                    Button(action: {
-                        if isRunning {
-                            stopGym()
-                        } else {
-                            startGym()
+                    if isRunning {
+                        HStack(spacing: 12) {
+                            Button(action: {
+                                pauseGym()
+                            }) {
+                                HStack {
+                                    Image(systemName: "pause.fill")
+                                        .font(.system(size: 18))
+                                    Text("中断")
+                                        .font(.headline)
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color.orange)
+                                .cornerRadius(12)
+                            }
+
+                            Button(action: {
+                                endGym()
+                            }) {
+                                HStack {
+                                    Image(systemName: "stop.fill")
+                                        .font(.system(size: 18))
+                                    Text("終了")
+                                        .font(.headline)
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color.red)
+                                .cornerRadius(12)
+                            }
                         }
-                    }) {
-                        HStack {
-                            Image(systemName: isRunning ? "stop.fill" : "play.fill")
-                                .font(.system(size: 20))
-                            Text(isRunning ? "停止" : "開始")
-                                .font(.headline)
+                    } else {
+                        Button(action: {
+                            resumeOrStartGym()
+                        }) {
+                            HStack {
+                                Image(systemName: elapsedTime > 0 ? "play.circle.fill" : "play.fill")
+                                    .font(.system(size: 20))
+                                Text(elapsedTime > 0 ? "再開" : "開始")
+                                    .font(.headline)
+                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.blue)
+                            .cornerRadius(12)
                         }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(isRunning ? Color.red : Color.blue)
-                        .cornerRadius(12)
                     }
                 }
                 .padding(.horizontal, 16)
@@ -170,6 +203,13 @@ struct RunGymView: View {
             } message: {
                 Text(errorMessage)
             }
+            .alert("お疲れ様でした！", isPresented: $showingCompletedMessage) {
+                Button("OK") {
+                    dismiss()
+                }
+            } message: {
+                Text("Runを保存しました。")
+            }
     }
 
     private func startGym() {
@@ -184,14 +224,34 @@ struct RunGymView: View {
         }
     }
 
-    private func stopGym(showConfirmation: Bool = true) {
+    private func resumeOrStartGym() {
+        if elapsedTime > 0 {
+            resumeGym()
+        } else {
+            startGym()
+        }
+    }
+
+    private func resumeGym() {
+        isRunning = true
+        startTime = Date().addingTimeInterval(-elapsedTime)
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+            guard let start = startTime else { return }
+            elapsedTime = Date().timeIntervalSince(start)
+        }
+    }
+
+    private func pauseGym() {
         isRunning = false
         timer?.invalidate()
         timer = nil
         totalDistanceKm = currentDistanceKm
-        if showConfirmation {
-            showingSaveConfirmation = true
-        }
+    }
+
+    private func endGym() {
+        pauseGym()
+        showingSaveConfirmation = true
     }
 
     private func formatTime(_ time: TimeInterval) -> String {
@@ -251,7 +311,17 @@ struct RunGymView: View {
         )
         NotificationCenter.default.post(name: .init("RunRecordDidSave"), object: nil)
         isLoading = false
-        dismiss()
+        resetGymSessionState()
+        showingCompletedMessage = true
+    }
+
+    private func resetGymSessionState() {
+        isRunning = false
+        startTime = nil
+        elapsedTime = 0
+        totalDistanceKm = 0
+        timer?.invalidate()
+        timer = nil
     }
 }
 

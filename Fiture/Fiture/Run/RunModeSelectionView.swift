@@ -12,6 +12,11 @@ struct RunModeSelectionView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var mode: RunMode = .anywhere
+    let showsCancelButton: Bool
+
+    init(showsCancelButton: Bool = true) {
+        self.showsCancelButton = showsCancelButton
+    }
 
     var body: some View {
         NavigationView {
@@ -43,9 +48,11 @@ struct RunModeSelectionView: View {
             .navigationTitle("Run")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("キャンセル") {
-                        dismiss()
+                if showsCancelButton {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button("キャンセル") {
+                            dismiss()
+                        }
                     }
                 }
             }

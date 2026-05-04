@@ -6,67 +6,41 @@
 //
 
 import SwiftUI
+import SceneKit
 
 struct TrainingBodyView: View {
     @EnvironmentObject var authManager: AuthManager
     @StateObject private var viewModel = TrainingBodyViewModel()
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 30) {
-                // ヘッダー
-                VStack(spacing: 8) {
+        GeometryReader { geo in
+            ScrollView {
+                VStack(spacing: 16) {
                     Text("筋トレ")
                         .font(.title)
                         .fontWeight(.bold)
-                        .padding(.top, 20)
-                }
-                .frame(maxWidth: .infinity)
-                
-                // 体の模型（タップ可能な部位付き）
+                        .padding(.top, 12)
+                        .frame(maxWidth: .infinity)
+                    
                 InteractiveBodyModelView(
-                    selectedMuscle: $viewModel.selectedMuscleType,
+                    muscleStates: viewModel.muscleVisualStates,
                     onMuscleTapped: { muscleType in
                         viewModel.selectMuscle(muscleType)
                     }
                 )
-                .frame(height: 400)
-                .padding(.vertical, 20)
-                
-                // 今日の筋トレ目標
-                if !viewModel.trainingTargets.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("今日の筋トレ")
-                            .font(.headline)
-                            .fontWeight(.bold)
-                            .padding(.horizontal, 20)
-                        
-                        ForEach(viewModel.trainingTargets) { target in
-                            TrainingSummaryCard(trainingTarget: target)
-                                .padding(.horizontal, 20)
-                        }
-                    }
-                } else {
-                    VStack(spacing: 12) {
-                        Image(systemName: "figure.strengthtraining.traditional")
-                            .font(.system(size: 50))
-                            .foregroundColor(.gray)
-                        
-                        Text("まだ筋トレ目標が設定されていません")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
-                        
-                        Text("「目標」タブで筋トレ目標を設定してください")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    .padding()
+                    .frame(height: max(420, geo.size.height - 72))
+                    .padding(.horizontal, 8)
                 }
             }
         }
         .task {
             viewModel.setAuthManager(authManager)
-            await viewModel.fetchTrainingTargets()
+            await viewModel.refreshMuscleHighlightStates()
+        }
+        .onChange(of: viewModel.showingMuscleRecord) { _, isOpen in
+            if !isOpen {
+                Task { await viewModel.refreshMuscleHighlightStates() }
+            }
         }
         .sheet(isPresented: $viewModel.showingMuscleRecord) {
             if let muscleType = viewModel.selectedMuscleType {
@@ -80,70 +54,124 @@ struct TrainingBodyView: View {
     }
 }
 
-// 体の模型ビュー（タップ可能な部位付き）
+struct HumanModelHeaderView: View {
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemGray6))
+
+            if let scene = buildHumanScene() {
+                SceneView(
+                    scene: scene,
+                    pointOfView: scene.rootNode.childNode(withName: "human_camera", recursively: false),
+                    options: [.autoenablesDefaultLighting]
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(8)
+            } else {
+                VStack(spacing: 8) {
+                    Image("training")
+                        .resizable()
+                        .scaledToFit()
+                        .padding(.horizontal, 28)
+                    Text("\(HumanBodyUSDResource.primaryFilename) を読み込めません")
+                        .font(.caption2)
+                        .foregroundColor(.red)
+                }
+            }
+        }
+        .frame(width: 120, height: 120)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color(.systemGray4), lineWidth: 1)
+        )
+    }
+}
+
+struct HumanMuscleSceneView: View {
+    var body: some View {
+        ZStack {
+            if let scene = buildHumanScene() {
+                SceneView(
+                    scene: scene,
+                    pointOfView: scene.rootNode.childNode(withName: "human_camera", recursively: false),
+                    options: [.autoenablesDefaultLighting]
+                )
+                .allowsHitTesting(false)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(0)
+            } else {
+                VStack(spacing: 8) {
+                    Image("training")
+                        .resizable()
+                        .scaledToFit()
+                        .padding(40)
+                    Text("\(HumanBodyUSDResource.primaryFilename) 読み込み失敗")
+                        .font(.caption2)
+                        .foregroundColor(.red)
+                }
+            }
+        }
+    }
+}
+
+// 体の模型ビュー（USDZ メッシュをタップして部位を選択）
 struct InteractiveBodyModelView: View {
-    @State private var selectedView: BodyViewType = .front
-    @Binding var selectedMuscle: MuscleType?
+    @State private var bodyOrbitYaw: Double = HumanBodyUSDSceneKeys.defaultOrbitYawRadians
+    let muscleStates: [MuscleType: MuscleVisualState]
     let onMuscleTapped: (MuscleType) -> Void
     
-    enum BodyViewType: String, CaseIterable {
-        case front = "前面"
-        case back = "背面"
-    }
-    
-    enum MuscleType: String {
+    enum MuscleType: String, CaseIterable {
         case chest = "胸"
-        case arms = "前腕・二頭"
+        case biceps = "二頭"
+        case shoulders = "肩"
+        case arms = "腕"
         case triceps = "三頭"
         case back = "背中"
-        case legs = "脚"
+        case thighs = "太もも"
+        case lowerLegs = "ふくらはぎ"
         case glutes = "尻"
         case abs = "腹"
     }
     
     var body: some View {
         VStack(spacing: 15) {
-            // ビュー切り替えボタン
-            Picker("ビュー", selection: $selectedView) {
-                ForEach(BodyViewType.allCases, id: \.self) { viewType in
-                    Text(viewType.rawValue).tag(viewType)
-                }
+            HStack(spacing: 14) {
+                legendChip(color: .red, text: "今日トレ")
+                legendChip(color: .yellow.opacity(0.85), text: "疲労")
+                legendChip(color: .gray.opacity(0.55), text: "未使用")
             }
-            .pickerStyle(SegmentedPickerStyle())
+            .font(.caption2)
+            .foregroundColor(.secondary)
             .padding(.horizontal, 20)
+
+            Text("横にドラッグでモデルを回転・タップで部位")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 20)
             
-            // 体のシルエット
-            GeometryReader { geometry in
-                let width = geometry.size.width
-                let height = geometry.size.height
-                let centerX = width / 2
-                let scale = min(width / 200, height / 400)
-                
+            GeometryReader { _ in
                 ZStack {
-                    // 背景
                     Color(.systemGray6)
                         .clipShape(RoundedRectangle(cornerRadius: 20))
                     
-                    // 選択されたビューに応じて表示
-                    if selectedView == .front {
-                        InteractiveBodyFrontView(
-                            centerX: centerX,
-                            height: height,
-                            scale: scale,
-                            selectedMuscle: $selectedMuscle,
-                            onMuscleTapped: onMuscleTapped
-                        )
-                    } else {
-                        InteractiveBodyBackView(
-                            centerX: centerX,
-                            height: height,
-                            scale: scale,
-                            selectedMuscle: $selectedMuscle,
-                            onMuscleTapped: onMuscleTapped
-                        )
-                    }
+                    MuscleHitTestSceneView(
+                        orbitYaw: $bodyOrbitYaw,
+                        muscleStates: muscleStates,
+                        onMuscleTapped: onMuscleTapped
+                    )
                 }
             }
+        }
+    }
+    
+    private func legendChip(color: Color, text: String) -> some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(color)
+                .frame(width: 8, height: 8)
+            Text(text)
         }
     }
 }
@@ -289,179 +317,6 @@ struct BodySilhouette: Shape {
         ))
         
         return path
-    }
-}
-
-// 前面ビュー（タップ可能）
-struct InteractiveBodyFrontView: View {
-    let centerX: CGFloat
-    let height: CGFloat
-    let scale: CGFloat
-    @Binding var selectedMuscle: InteractiveBodyModelView.MuscleType?
-    let onMuscleTapped: (InteractiveBodyModelView.MuscleType) -> Void
-    
-    var body: some View {
-        ZStack {
-            BodySilhouette(centerX: centerX, height: height, scale: scale)
-                .fill(Color.blue.opacity(0.2))
-                .stroke(Color.blue.opacity(0.5), lineWidth: 2)
-            
-            // タップ可能な部位
-            // 胸（判定エリアを大きく、下まで含める）
-            MuscleButton(
-                position: CGPoint(x: centerX, y: height * 0.28),
-                size: CGSize(width: 80 * scale, height: 80 * scale),
-                muscleType: .chest,
-                selectedMuscle: $selectedMuscle,
-                onTapped: { onMuscleTapped(.chest) }
-            )
-            
-            // 腹（位置を下に移動）
-            MuscleButton(
-                position: CGPoint(x: centerX, y: height * 0.42),
-                size: CGSize(width: 45 * scale, height: 60 * scale),
-                muscleType: .abs,
-                selectedMuscle: $selectedMuscle,
-                onTapped: { onMuscleTapped(.abs) }
-            )
-            
-            // 左腕
-            MuscleButton(
-                position: CGPoint(x: centerX - 60 * scale, y: height * 0.3),
-                size: CGSize(width: 30 * scale, height: 100 * scale),
-                muscleType: .arms,
-                selectedMuscle: $selectedMuscle,
-                onTapped: { onMuscleTapped(.arms) }
-            )
-            
-            // 右腕
-            MuscleButton(
-                position: CGPoint(x: centerX + 60 * scale, y: height * 0.3),
-                size: CGSize(width: 30 * scale, height: 100 * scale),
-                muscleType: .arms,
-                selectedMuscle: $selectedMuscle,
-                onTapped: { onMuscleTapped(.arms) }
-            )
-            
-            // 左脚
-            MuscleButton(
-                position: CGPoint(x: centerX - 20 * scale, y: height * 0.65),
-                size: CGSize(width: 30 * scale, height: 80 * scale),
-                muscleType: .legs,
-                selectedMuscle: $selectedMuscle,
-                onTapped: { onMuscleTapped(.legs) }
-            )
-            
-            // 右脚
-            MuscleButton(
-                position: CGPoint(x: centerX + 20 * scale, y: height * 0.65),
-                size: CGSize(width: 30 * scale, height: 80 * scale),
-                muscleType: .legs,
-                selectedMuscle: $selectedMuscle,
-                onTapped: { onMuscleTapped(.legs) }
-            )
-        }
-    }
-}
-
-// 背面ビュー（タップ可能）
-struct InteractiveBodyBackView: View {
-    let centerX: CGFloat
-    let height: CGFloat
-    let scale: CGFloat
-    @Binding var selectedMuscle: InteractiveBodyModelView.MuscleType?
-    let onMuscleTapped: (InteractiveBodyModelView.MuscleType) -> Void
-    
-    var body: some View {
-        ZStack {
-            BodySilhouetteBack(centerX: centerX, height: height, scale: scale)
-                .fill(Color.blue.opacity(0.2))
-                .stroke(Color.blue.opacity(0.5), lineWidth: 2)
-            
-            // タップ可能な部位
-            // 背中
-            MuscleButton(
-                position: CGPoint(x: centerX, y: height * 0.3),
-                size: CGSize(width: 70 * scale, height: 90 * scale),
-                muscleType: .back,
-                selectedMuscle: $selectedMuscle,
-                onTapped: { onMuscleTapped(.back) }
-            )
-            
-            // 左腕（三頭）
-            MuscleButton(
-                position: CGPoint(x: centerX - 60 * scale, y: height * 0.3),
-                size: CGSize(width: 30 * scale, height: 100 * scale),
-                muscleType: .triceps,
-                selectedMuscle: $selectedMuscle,
-                onTapped: { onMuscleTapped(.triceps) }
-            )
-            
-            // 右腕（三頭）
-            MuscleButton(
-                position: CGPoint(x: centerX + 60 * scale, y: height * 0.3),
-                size: CGSize(width: 30 * scale, height: 100 * scale),
-                muscleType: .triceps,
-                selectedMuscle: $selectedMuscle,
-                onTapped: { onMuscleTapped(.triceps) }
-            )
-            
-            // 尻
-            MuscleButton(
-                position: CGPoint(x: centerX, y: height * 0.5),
-                size: CGSize(width: 60 * scale, height: 50 * scale),
-                muscleType: .glutes,
-                selectedMuscle: $selectedMuscle,
-                onTapped: { onMuscleTapped(.glutes) }
-            )
-            
-            // 左脚
-            MuscleButton(
-                position: CGPoint(x: centerX - 20 * scale, y: height * 0.65),
-                size: CGSize(width: 30 * scale, height: 80 * scale),
-                muscleType: .legs,
-                selectedMuscle: $selectedMuscle,
-                onTapped: { onMuscleTapped(.legs) }
-            )
-            
-            // 右脚
-            MuscleButton(
-                position: CGPoint(x: centerX + 20 * scale, y: height * 0.65),
-                size: CGSize(width: 30 * scale, height: 80 * scale),
-                muscleType: .legs,
-                selectedMuscle: $selectedMuscle,
-                onTapped: { onMuscleTapped(.legs) }
-            )
-        }
-    }
-}
-
-// 筋肉部位のタップ可能なボタン
-struct MuscleButton: View {
-    let position: CGPoint
-    let size: CGSize
-    let muscleType: InteractiveBodyModelView.MuscleType
-    @Binding var selectedMuscle: InteractiveBodyModelView.MuscleType?
-    let onTapped: () -> Void
-    
-    private var isSelected: Bool {
-        selectedMuscle == muscleType
-    }
-    
-    var body: some View {
-        Button(action: {
-            selectedMuscle = muscleType
-            onTapped()
-        }) {
-            RoundedRectangle(cornerRadius: 8)
-                .fill(isSelected ? Color.blue.opacity(0.5) : Color.clear)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)
-                )
-                .frame(width: size.width, height: size.height)
-        }
-        .position(position)
     }
 }
 
@@ -669,53 +524,6 @@ struct MuscleMarkers: View {
     }
 }
 
-// 筋トレサマリーカード
-struct TrainingSummaryCard: View {
-    let trainingTarget: TrainingTarget
-    
-    var body: some View {
-        HStack(spacing: 15) {
-            Image("training")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 40, height: 40)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(trainingTarget.exerciseType)
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                
-                Text("目標: \(String(format: "%.0f", trainingTarget.target)) セット")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                
-                Text("現在: \(String(format: "%.0f", trainingTarget.attempt)) セット")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-            
-            VStack {
-                Text("\(String(format: "%.0f", trainingTarget.progressPercentage))%")
-                    .font(.title3)
-                    .fontWeight(.bold)
-                    .foregroundColor(.red)
-                
-                Text("進捗")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-        }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemGray6))
-        )
-    }
-}
-
 // セット情報
 struct TrainingSet: Identifiable {
     let id = UUID()
@@ -756,11 +564,7 @@ struct MuscleRecordView: View {
             VStack(spacing: 0) {
                 // ヘッダー
                 VStack(spacing: 15) {
-                    Image("training")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 80, height: 80)
-                        .clipShape(RoundedRectangle(cornerRadius: 15))
+                    HumanModelHeaderView()
                     
                     Text("\(muscleType.rawValue)の筋トレ記録")
                         .font(.title)
