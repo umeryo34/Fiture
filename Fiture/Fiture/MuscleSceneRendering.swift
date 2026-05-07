@@ -12,11 +12,11 @@ import SwiftUI
 import UIKit
 
 enum MuscleVisualState: Equatable {
-    /// 未トレ（記録なし）
+    /// 灰色：その日に種目なし、または「黄」から翌日にリセット
     case unused
-    /// 今日その部位を鍛えた（記録あり）
+    /// 赤：その日に同一部位へ **3種目以上** の記録がある
     case trainedToday
-    /// 直近で鍛えたが今日は未記録（疲労・回復イメージで黄色）
+    /// 黄：その日に **1〜2種目**、または昨日が赤で今日は未記録（赤→黄）
     case fatigued
 }
 
