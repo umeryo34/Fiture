@@ -48,6 +48,17 @@ class TrainingBodyViewModel: ObservableObject {
         return trainingTargetManager
     }
 
+    /// 同一日内は **種目の種類数**（部位へのマッピング後のユニーク種目名）で赤=3以上・黄=1〜2。
+    /// 今日が未記録のとき、昨日が赤相当なら黄、昨日が黄相当なら灰へ。
+    private static func distinctExerciseCountByMuscle(records: [TrainingRecord]) -> [InteractiveBodyModelView.MuscleType: Int] {
+        var namesByMuscle: [InteractiveBodyModelView.MuscleType: Set<String>] = [:]
+        for record in records {
+            guard let muscle = MuscleExerciseCatalog.muscleType(forExerciseType: record.exerciseType) else { continue }
+            namesByMuscle[muscle, default: []].insert(record.exerciseType)
+        }
+        return namesByMuscle.mapValues { $0.count }
+    }
+
     /// 今日・昨日の記録から部位の色状態を更新（USDZ ノード名と種目の対応は MuscleExerciseCatalog / MuscleSceneAppearance）
     func refreshMuscleHighlightStates() async {
         guard let userId = authManager?.currentUser?.id else {
@@ -63,27 +74,25 @@ class TrainingBodyViewModel: ObservableObject {
         let todayRecords = LocalDataStore.shared.trainingRecords(onDate: today, userId: userId)
         let yesterdayRecords = LocalDataStore.shared.trainingRecords(onDate: yesterday, userId: userId)
 
-        var musclesToday = Set<InteractiveBodyModelView.MuscleType>()
-        for r in todayRecords {
-            if let m = MuscleExerciseCatalog.muscleType(forExerciseType: r.exerciseType) {
-                musclesToday.insert(m)
-            }
-        }
-        var musclesYesterday = Set<InteractiveBodyModelView.MuscleType>()
-        for r in yesterdayRecords {
-            if let m = MuscleExerciseCatalog.muscleType(forExerciseType: r.exerciseType) {
-                musclesYesterday.insert(m)
-            }
-        }
+        let todayDistinctCount = Self.distinctExerciseCountByMuscle(records: todayRecords)
+        let yesterdayDistinctCount = Self.distinctExerciseCountByMuscle(records: yesterdayRecords)
 
         var next: [InteractiveBodyModelView.MuscleType: MuscleVisualState] = [:]
         for muscle in InteractiveBodyModelView.MuscleType.allCases {
-            if musclesToday.contains(muscle) {
+            let todayN = todayDistinctCount[muscle] ?? 0
+            let yesterdayN = yesterdayDistinctCount[muscle] ?? 0
+
+            if todayN >= 3 {
                 next[muscle] = .trainedToday
-            } else if musclesYesterday.contains(muscle) {
+            } else if todayN >= 1 {
                 next[muscle] = .fatigued
             } else {
-                next[muscle] = .unused
+                /// 今日は未記録：昨日が赤相当（3種目以上）→黄、昨日が黄相当（1〜2）→灰、それ以外も灰
+                if yesterdayN >= 3 {
+                    next[muscle] = .fatigued
+                } else {
+                    next[muscle] = .unused
+                }
             }
         }
         muscleVisualStates = next
