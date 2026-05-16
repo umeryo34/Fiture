@@ -14,12 +14,6 @@ struct TrainingBodyView: View {
     
     var body: some View {
         VStack(spacing: 16) {
-            Text("筋トレ")
-                .font(.title)
-                .fontWeight(.bold)
-                .padding(.top, 12)
-                .frame(maxWidth: .infinity)
-
             InteractiveBodyModelView(
                 muscleStates: viewModel.muscleVisualStates,
                 onMuscleTapped: { muscleType in
@@ -136,18 +130,13 @@ struct InteractiveBodyModelView: View {
     var body: some View {
         VStack(spacing: 15) {
             HStack(spacing: 14) {
-                legendChip(color: .red, text: "3種目以上")
-                legendChip(color: .yellow.opacity(0.85), text: "1〜2種目")
+                legendChip(color: .red, text: "疲労度：高")
+                legendChip(color: .yellow.opacity(0.85), text: "疲労度：中")
                 legendChip(color: .gray.opacity(0.55), text: "なし")
             }
             .font(.caption2)
             .foregroundColor(.secondary)
             .padding(.horizontal, 20)
-
-            Text("翌日: 赤→黄・黄→灰（当日は種目数で判定）")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 20)
 
             Text("横にドラッグでモデルを回転・タップで部位")
                 .font(.caption2)
