@@ -16,8 +16,9 @@ class HomeViewModel: ObservableObject {
     @Published var showingSearch = false
     @Published var selectedDate: Date = Date()
     @Published var isLoading = false
-    /// 選択日の Run 記録に基づく消費カロリー合計（kcal）
-    @Published var runBurnedCaloriesKcal: Double = 0
+    /// 選択日のヘルスケア・アクティブエネルギー合計（kcal）
+    @Published var burnedCaloriesKcal: Double = 0
+    @Published var healthKitErrorMessage: String?
     
     private let caloriesTargetManager = CaloriesTargetManager()
     weak var authManager: AuthManager?
@@ -40,9 +41,9 @@ class HomeViewModel: ObservableObject {
         caloriesTargetManager.totalCalories
     }
 
-    /// 食事摂取 − Run消費（運動後の「正味」摂取イメージ）
-    var netCaloriesAfterRun: Double {
-        totalCalories - runBurnedCaloriesKcal
+    /// 食事摂取 − 消費カロリー（運動後の「正味」摂取イメージ）
+    var netCaloriesAfterBurn: Double {
+        totalCalories - burnedCaloriesKcal
     }
     
     var caloriesEntries: [CaloriesEntry] {
@@ -128,7 +129,24 @@ class HomeViewModel: ObservableObject {
         
         try? await fetchEntries
         try? await fetchTarget
-        runBurnedCaloriesKcal = LocalDataStore.shared.runBurnedCaloriesKcal(on: date)
+        await fetchBurnedCaloriesFromHealth(for: date)
+    }
+
+    func fetchBurnedCaloriesFromHealth(for date: Date) async {
+        healthKitErrorMessage = nil
+        guard HealthKitCalorieService.shared.isAvailable else {
+            burnedCaloriesKcal = 0
+            healthKitErrorMessage = "この端末ではヘルスケアを利用できません。"
+            return
+        }
+
+        do {
+            try await HealthKitCalorieService.shared.requestAuthorization()
+            burnedCaloriesKcal = try await HealthKitCalorieService.shared.activeEnergyBurnedKcal(on: date)
+        } catch {
+            burnedCaloriesKcal = 0
+            healthKitErrorMessage = error.localizedDescription
+        }
     }
     
     func formatTime(_ date: Date) -> String {

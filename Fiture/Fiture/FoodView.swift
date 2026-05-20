@@ -211,7 +211,7 @@ private struct FoodViewContent: View {
                 await viewModel.fetchCaloriesDataForDate(viewModel.selectedDate)
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: Notification.Name("RunRecordDidSave"))) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .runRecordDidSave)) { _ in
             Task {
                 await viewModel.fetchCaloriesDataForDate(viewModel.selectedDate)
             }
@@ -319,14 +319,14 @@ private struct CalorieBalanceCard: View {
                 .foregroundColor(.primary)
 
             balanceRow(title: "食事の摂取", kcal: viewModel.totalCalories, accent: .primary)
-            balanceRow(title: "運動の消費（Run）", kcal: viewModel.runBurnedCaloriesKcal, accent: .orange)
+            balanceRow(title: "消費カロリー", kcal: viewModel.burnedCaloriesKcal, accent: .orange)
 
             Divider()
 
-            balanceRow(title: "ネット（摂取 − 運動）", kcal: viewModel.netCaloriesAfterRun, accent: .blue)
+            balanceRow(title: "ネット（摂取 − 消費）", kcal: viewModel.netCaloriesAfterBurn, accent: .blue)
 
             if let target = viewModel.targetCalories, target > 0 {
-                let margin = target - viewModel.netCaloriesAfterRun
+                let margin = target - viewModel.netCaloriesAfterBurn
                 HStack(alignment: .firstTextBaseline) {
                     Text(margin >= 0 ? "1日の目標までの余白" : "1日の目標の超過")
                         .font(.subheadline)
@@ -339,10 +339,17 @@ private struct CalorieBalanceCard: View {
                 }
             }
 
-            Text("運動の消費は、プロフィールに体重があり Run 保存時に kcal が入っている記録だけを合算しています。")
-                .font(.caption2)
-                .foregroundColor(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            if let message = viewModel.healthKitErrorMessage {
+                Text(message)
+                    .font(.caption2)
+                    .foregroundColor(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Text("消費カロリーは、ヘルスアプリの「アクティブエネルギー」（その日の合計）を表示しています。")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)

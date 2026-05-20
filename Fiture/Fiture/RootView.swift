@@ -43,13 +43,6 @@ struct RootView: View {
                     Text("Run")
                 }
             
-            TrainingBodyView()
-                .environmentObject(authManager)
-                .tabItem {
-                    Image(systemName: "figure.strengthtraining.traditional")
-                    Text("筋トレ")
-                }
-            
             ProgressView()
                 .environmentObject(authManager)
                 .tabItem {
