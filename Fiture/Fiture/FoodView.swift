@@ -28,162 +28,24 @@ private struct FoodViewContent: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Spacer()
-                NavigationLink {
-                    CalendarView(selectedDate: $viewModel.selectedDate) { newDate in
-                        viewModel.selectedDate = newDate
-                        Task {
-                            await viewModel.fetchCaloriesDataForDate(newDate)
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 10) {
-                        Image(systemName: "calendar")
-                            .font(.system(size: 16, weight: .semibold))
-                        Text("カレンダーに移動")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                        Spacer(minLength: 0)
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(.secondary)
-                    }
-                    .foregroundColor(.primary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 11)
-                    .background(Color(.systemGray6))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 20)
-            .padding(.bottom, 8)
-            
-            Spacer()
-                .frame(height: 20)
-            
-            // カロリー情報と進捗バー
-            if let target = viewModel.targetCalories, target > 0 {
-                VStack(spacing: 16) {
-                    VStack(spacing: 8) {
-                        Text("\(String(format: "%.0f", viewModel.totalCalories)) / \(String(format: "%.0f", target)) kcal")
-                            .font(.system(size: 32, weight: .bold))
-                            .foregroundColor(.primary)
-                        
-                        // 進捗バー
-                        GeometryReader { geometry in
-                            ZStack(alignment: .leading) {
-                                Rectangle()
-                                    .fill(Color.gray.opacity(0.3))
-                                    .frame(height: 8)
-                                    .cornerRadius(4)
-                                
-                                Rectangle()
-                                    .fill(viewModel.progressColor)
-                                    .frame(width: min(geometry.size.width, geometry.size.width * CGFloat(min(viewModel.totalCalories / target, 1.0))), height: 8)
-                                    .cornerRadius(4)
-                            }
-                        }
-                        .frame(height: 8)
-                        .frame(maxWidth: .infinity)
-                    }
+                calendarLink
                     .padding(.horizontal, 20)
-                    
-                    // ボタン群
-                    HStack(spacing: 12) {
-                        // 食事追加ボタン
-                        Button(action: {
-                            viewModel.showingCaloriesInput = true
-                        }) {
-                            HStack {
-                                Image(systemName: "plus.circle.fill")
-                                    .font(.system(size: 14))
-                                Text("食事を追加")
-                                    .font(.subheadline)
-                            }
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(Color.red)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                        }
-                        
-                        // 詳細ボタン
-                        NavigationLink {
-                            FoodDayDetailView(viewModel: viewModel)
-                        } label: {
-                            HStack {
-                                Image(systemName: "list.bullet.rectangle")
-                                    .font(.system(size: 14))
-                                Text("詳細")
-                                    .font(.subheadline)
-                            }
-                            .foregroundColor(.black)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(Color.gray.opacity(0.1))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.bottom, 10)
-            } else {
-                // 目標が設定されていない場合
-                VStack(spacing: 16) {
-                    Text("\(String(format: "%.0f", viewModel.totalCalories)) kcal")
-                        .font(.system(size: 32, weight: .bold))
-                        .foregroundColor(.primary)
-                    
-                    VStack(spacing: 12) {
-                        // 食事追加ボタン
-                        Button(action: {
-                            viewModel.showingCaloriesInput = true
-                        }) {
-                            HStack {
-                                Image(systemName: "plus.circle.fill")
-                                    .font(.system(size: 16))
-                                Text("食事を追加")
-                                    .font(.headline)
-                            }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.red)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                        }
-                        .padding(.horizontal, 20)
-                        
-                        // 詳細ボタン
-                        NavigationLink {
-                            FoodDayDetailView(viewModel: viewModel)
-                        } label: {
-                            HStack {
-                                Image(systemName: "list.bullet.rectangle")
-                                    .font(.system(size: 16))
-                                Text("詳細")
-                                    .font(.headline)
-                            }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.black)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.horizontal, 20)
-                    }
-                }
-                .padding(.bottom, 10)
+                    .padding(.top, 20)
+                    .padding(.bottom, 8)
+
+                Spacer()
+                    .frame(height: 20)
+
+                calorieSummarySection
+                    .padding(.bottom, 10)
+
+                CalorieBalanceCard(viewModel: viewModel)
+                    .padding(.top, 12)
+
+                Spacer()
             }
-
-            CalorieBalanceCard(viewModel: viewModel)
-                .padding(.top, 12)
-
-            Spacer()
+            .safeAreaInset(edge: .bottom) {
+                addMealButton
             }
         }
         .sheet(isPresented: $viewModel.showingCaloriesInput) {
@@ -217,93 +79,96 @@ private struct FoodViewContent: View {
             }
         }
     }
-}
 
-/// 食事メニュー表と食事合計（メイン画面から遷移）
-private struct FoodDayDetailView: View {
-    @ObservedObject var viewModel: HomeViewModel
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                if viewModel.caloriesEntries.isEmpty {
-                    VStack(spacing: 16) {
-                        Image(systemName: "fork.knife")
-                            .font(.system(size: 50))
-                            .foregroundColor(.gray)
-                        VStack(spacing: 4) {
-                            Text("まだ食事を記録していません")
-                                .font(.subheadline)
-                                .foregroundColor(.gray)
-                            Text("「食事を追加」から記録できます")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 40)
-                } else {
-                    VStack(spacing: 8) {
-                        ForEach(viewModel.caloriesEntries) { entry in
-                            HStack {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(entry.foodName)
-                                        .font(.subheadline)
-                                        .foregroundColor(.primary)
-                                    Text(viewModel.formatTime(entry.createdAt))
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                                Spacer()
-                                Text("\(String(format: "%.0f", entry.calories)) kcal")
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                    .foregroundColor(.primary)
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 12)
-                            .background(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color(.systemGray6))
-                            )
-                        }
-                    }
+    private var calendarLink: some View {
+        NavigationLink {
+            CalendarView(selectedDate: $viewModel.selectedDate) { newDate in
+                viewModel.selectedDate = newDate
+                Task {
+                    await viewModel.fetchCaloriesDataForDate(newDate)
                 }
-
-                HStack {
-                    Text("食事の合計")
-                        .font(.headline)
-                        .fontWeight(.bold)
-                    Spacer()
-                    Text("\(String(format: "%.0f", viewModel.totalCalories)) kcal")
-                        .font(.headline)
-                        .fontWeight(.bold)
-                        .foregroundColor(viewModel.totalCaloriesColor)
-                }
-                .padding()
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(viewModel.totalCaloriesBackgroundColor)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(viewModel.totalCaloriesBorderColor, lineWidth: 1)
-                )
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 8)
-            .padding(.bottom, 24)
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "calendar")
+                    .font(.system(size: 16, weight: .semibold))
+                Text("カレンダーに移動")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .semibold))
+            }
+            .foregroundColor(.black)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            .background(Color(.systemGray6))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
         }
-        .background(Color(.systemGroupedBackground))
-        .navigationTitle(detailDateTitle)
-        .navigationBarTitleDisplayMode(.inline)
+        .buttonStyle(.plain)
     }
 
-    private var detailDateTitle: String {
-        let df = DateFormatter()
-        df.locale = Locale(identifier: "ja_JP")
-        df.dateFormat = "M月d日(E)"
-        return df.string(from: viewModel.selectedDate)
+    @ViewBuilder
+    private var calorieSummarySection: some View {
+        if let target = viewModel.targetCalories, target > 0 {
+            VStack(spacing: 8) {
+                Text("\(String(format: "%.0f", viewModel.totalCalories)) / \(String(format: "%.0f", target)) kcal")
+                    .font(.system(size: 32, weight: .bold))
+                    .foregroundColor(viewModel.totalCalories > target ? .red : .black)
+
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        Rectangle()
+                            .fill(Color.black.opacity(0.12))
+                            .frame(height: 8)
+                            .cornerRadius(4)
+
+                        Rectangle()
+                            .fill(viewModel.progressColor)
+                            .frame(
+                                width: min(
+                                    geometry.size.width,
+                                    geometry.size.width * CGFloat(min(viewModel.totalCalories / target, 1.0))
+                                ),
+                                height: 8
+                            )
+                            .cornerRadius(4)
+                    }
+                }
+                .frame(height: 8)
+                .frame(maxWidth: .infinity)
+            }
+            .padding(.horizontal, 20)
+        } else {
+            Text("\(String(format: "%.0f", viewModel.totalCalories)) kcal")
+                .font(.system(size: 32, weight: .bold))
+                .foregroundColor(.black)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 20)
+        }
+    }
+
+    private var addMealButton: some View {
+        Button {
+            viewModel.showingCaloriesInput = true
+        } label: {
+            HStack {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 18))
+                Text("食事を追加")
+                    .font(.headline)
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(Color.red)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 12)
+        .padding(.bottom, 8)
+        .background(Color(.systemBackground))
     }
 }
 
@@ -316,38 +181,42 @@ private struct CalorieBalanceCard: View {
             Text("カロリー収支")
                 .font(.headline)
                 .fontWeight(.bold)
-                .foregroundColor(.primary)
+                .foregroundColor(.black)
 
-            balanceRow(title: "食事の摂取", kcal: viewModel.totalCalories, accent: .primary)
-            balanceRow(title: "消費カロリー", kcal: viewModel.burnedCaloriesKcal, accent: .orange)
+            balanceRow(title: "食事の摂取", kcal: viewModel.totalCalories, isWarning: false)
+            balanceRow(title: "消費カロリー", kcal: viewModel.burnedCaloriesKcal, isWarning: false)
 
             Divider()
 
-            balanceRow(title: "ネット（摂取 − 消費）", kcal: viewModel.netCaloriesAfterBurn, accent: .blue)
+            balanceRow(
+                title: "ネット（摂取 − 消費）",
+                kcal: viewModel.netCaloriesAfterBurn,
+                isWarning: netExceedsTarget
+            )
 
             if let target = viewModel.targetCalories, target > 0 {
                 let margin = target - viewModel.netCaloriesAfterBurn
                 HStack(alignment: .firstTextBaseline) {
                     Text(margin >= 0 ? "1日の目標までの余白" : "1日の目標の超過")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.black.opacity(0.6))
                     Spacer()
                     Text("\(String(format: "%.0f", abs(margin))) kcal")
                         .font(.subheadline)
                         .fontWeight(.semibold)
-                        .foregroundColor(margin >= 0 ? .green : .red)
+                        .foregroundColor(margin >= 0 ? .black : .red)
                 }
             }
 
             if let message = viewModel.healthKitErrorMessage {
                 Text(message)
                     .font(.caption2)
-                    .foregroundColor(.orange)
+                    .foregroundColor(.red)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
                 Text("消費カロリーは、ヘルスアプリの「アクティブエネルギー」（その日の合計）を表示しています。")
                     .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.black.opacity(0.5))
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -360,16 +229,21 @@ private struct CalorieBalanceCard: View {
         .padding(.horizontal, 20)
     }
 
-    private func balanceRow(title: String, kcal: Double, accent: Color) -> some View {
+    private var netExceedsTarget: Bool {
+        guard let target = viewModel.targetCalories, target > 0 else { return false }
+        return viewModel.netCaloriesAfterBurn > target
+    }
+
+    private func balanceRow(title: String, kcal: Double, isWarning: Bool) -> some View {
         HStack(alignment: .firstTextBaseline) {
             Text(title)
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(.black.opacity(0.6))
             Spacer()
             Text("\(String(format: "%.0f", kcal)) kcal")
                 .font(.subheadline)
                 .fontWeight(.semibold)
-                .foregroundColor(accent)
+                .foregroundColor(isWarning ? .red : .black)
         }
     }
 }
