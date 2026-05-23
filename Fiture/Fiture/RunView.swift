@@ -9,7 +9,11 @@ import SwiftUI
 
 struct RunView: View {
     var body: some View {
-        RunModeSelectionView(showsCancelButton: false)
+        NavigationView {
+            RunGymView()
+                .navigationTitle("Run")
+                .navigationBarTitleDisplayMode(.inline)
+        }
     }
 }
 

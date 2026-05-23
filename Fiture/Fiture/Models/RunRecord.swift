@@ -23,7 +23,7 @@ struct RunRecord: Codable, Identifiable, Equatable {
     let distanceKm: Double
     let durationSeconds: TimeInterval
     let source: RunRecordSource
-    /// ACSM式による推定消費カロリー（kcal）。体重未設定などで算出できない場合は nil
+    /// 旧バージョンの推定消費カロリー（kcal）。新規記録はヘルスケア連携のため nil
     var caloriesKcal: Double?
     /// Gymモード時のみ（任意）
     var treadmillInclineDegrees: Double?
