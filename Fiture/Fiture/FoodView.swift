@@ -27,22 +27,23 @@ private struct FoodViewContent: View {
     
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 0) {
-                calendarLink
-                    .padding(.horizontal, 20)
-                    .padding(.top, 20)
-                    .padding(.bottom, 8)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    calendarLink
+                        .padding(.horizontal, 20)
+                        .padding(.top, 20)
+                        .padding(.bottom, 8)
 
-                Spacer()
-                    .frame(height: 20)
+                    Spacer()
+                        .frame(height: 20)
 
-                calorieSummarySection
-                    .padding(.bottom, 10)
+                    calorieSummarySection
+                        .padding(.bottom, 10)
 
-                CalorieBalanceCard(viewModel: viewModel)
-                    .padding(.top, 12)
-
-                Spacer()
+                    CalorieBalanceCard(viewModel: viewModel)
+                        .padding(.top, 12)
+                }
+                .padding(.bottom, 16)
             }
             .safeAreaInset(edge: .bottom) {
                 addMealButton
@@ -175,6 +176,8 @@ private struct FoodViewContent: View {
 /// 食事摂取と Run 消費カロリーの差・目標との関係
 private struct CalorieBalanceCard: View {
     @ObservedObject var viewModel: HomeViewModel
+    @State private var gymWalkingSpeedKmh = ExcessBurnExercisePlanner.defaultGymWalkingSpeedKmh
+    @State private var gymWalkingInclinePercent = ExcessBurnExercisePlanner.defaultGymWalkingInclinePercent
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -189,7 +192,7 @@ private struct CalorieBalanceCard: View {
             Divider()
 
             balanceRow(
-                title: "ネット（摂取 − 消費）",
+                title: "結果（摂取 − 消費）",
                 kcal: viewModel.netCaloriesAfterBurn,
                 isWarning: netExceedsTarget
             )
@@ -206,6 +209,18 @@ private struct CalorieBalanceCard: View {
                         .fontWeight(.semibold)
                         .foregroundColor(margin >= 0 ? .black : .red)
                 }
+            }
+
+            if let plan = viewModel.excessBurnExercisePlan(
+                gymWalkingSpeedKmh: gymWalkingSpeedKmh,
+                gymWalkingInclinePercent: gymWalkingInclinePercent
+            ) {
+                excessBurnExerciseSection(plan: plan)
+            } else if viewModel.excessCaloriesOverTarget != nil {
+                Text("運動時間の見積もりには、プロフィールの体重が必要です。")
+                    .font(.caption2)
+                    .foregroundColor(.red)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             if let message = viewModel.healthKitErrorMessage {
@@ -245,6 +260,92 @@ private struct CalorieBalanceCard: View {
                 .fontWeight(.semibold)
                 .foregroundColor(isWarning ? .red : .black)
         }
+    }
+
+    private func excessBurnExerciseSection(plan: ExcessBurnExercisePlan) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Divider()
+
+            Text("目標超過分を落とす目安")
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundColor(.red)
+
+            Text("あと \(String(format: "%.0f", plan.excessKcal)) kcal 分の運動が必要です（ACSM式・体重ベースの推定）。")
+                .font(.caption2)
+                .foregroundColor(.black.opacity(0.6))
+                .fixedSize(horizontal: false, vertical: true)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("ジム設定（ウォーキング）")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.black)
+
+                HStack {
+                    Text("傾斜（勾配）")
+                        .font(.caption)
+                        .foregroundColor(.black.opacity(0.6))
+                    Spacer()
+                    Text("\(Int(gymWalkingInclinePercent))%")
+                        .font(.caption)
+                        .foregroundColor(.black)
+                }
+                Slider(value: $gymWalkingInclinePercent, in: 0...15, step: 1)
+                    .tint(.red)
+
+                HStack {
+                    Text("速度")
+                        .font(.caption)
+                        .foregroundColor(.black.opacity(0.6))
+                    Spacer()
+                    Text(String(format: "%.1f km/h", gymWalkingSpeedKmh))
+                        .font(.caption)
+                        .foregroundColor(.black)
+                }
+                Slider(value: $gymWalkingSpeedKmh, in: 3...8, step: 0.5)
+                    .tint(.red)
+            }
+            .padding(10)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.black.opacity(0.03))
+            )
+
+            exerciseEstimateCard(estimate: plan.gymWalking)
+            exerciseEstimateCard(estimate: plan.outdoorRunning)
+        }
+    }
+
+    private func exerciseEstimateCard(estimate: ExerciseTimeEstimate) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(estimate.title)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundColor(.black)
+
+            HStack(spacing: 12) {
+                if estimate.inclinePercent > 0 {
+                    Text("傾斜 \(Int(estimate.inclinePercent))%")
+                        .font(.caption)
+                        .foregroundColor(.black.opacity(0.6))
+                }
+                Text(String(format: "%.1f km/h", estimate.speedKmh))
+                    .font(.caption)
+                    .foregroundColor(.black.opacity(0.6))
+            }
+
+            Text("約 \(estimate.formattedDuration)")
+                .font(.title3)
+                .fontWeight(.bold)
+                .foregroundColor(.black)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.black.opacity(0.04))
+        )
     }
 }
 

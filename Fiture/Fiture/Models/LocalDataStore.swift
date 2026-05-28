@@ -187,7 +187,7 @@ final class LocalDataStore {
         durationSeconds: TimeInterval,
         source: RunRecordSource,
         caloriesKcal: Double? = nil,
-        treadmillInclineDegrees: Double? = nil,
+        treadmillInclinePercent: Double? = nil,
         treadmillSpeedKmh: Double? = nil
     ) -> RunRecord {
         var state = loadState()
@@ -199,7 +199,7 @@ final class LocalDataStore {
             durationSeconds: durationSeconds,
             source: source.rawValue,
             caloriesKcal: caloriesKcal,
-            treadmillInclineDegrees: treadmillInclineDegrees,
+            treadmillInclinePercent: treadmillInclinePercent,
             treadmillSpeedKmh: treadmillSpeedKmh
         )
         state.runRecords.append(local)
@@ -482,8 +482,60 @@ private struct LocalRunRecord: Codable {
     let durationSeconds: TimeInterval
     let source: String
     var caloriesKcal: Double?
-    let treadmillInclineDegrees: Double?
+    let treadmillInclinePercent: Double?
     let treadmillSpeedKmh: Double?
+
+    enum CodingKeys: String, CodingKey {
+        case id, endedAt, distanceKm, durationSeconds, source, caloriesKcal
+        case treadmillInclinePercent
+        case treadmillSpeedKmh
+        case treadmillInclineDegrees
+    }
+
+    init(
+        id: UUID,
+        endedAt: Date,
+        distanceKm: Double,
+        durationSeconds: TimeInterval,
+        source: String,
+        caloriesKcal: Double?,
+        treadmillInclinePercent: Double?,
+        treadmillSpeedKmh: Double?
+    ) {
+        self.id = id
+        self.endedAt = endedAt
+        self.distanceKm = distanceKm
+        self.durationSeconds = durationSeconds
+        self.source = source
+        self.caloriesKcal = caloriesKcal
+        self.treadmillInclinePercent = treadmillInclinePercent
+        self.treadmillSpeedKmh = treadmillSpeedKmh
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        endedAt = try container.decode(Date.self, forKey: .endedAt)
+        distanceKm = try container.decode(Double.self, forKey: .distanceKm)
+        durationSeconds = try container.decode(TimeInterval.self, forKey: .durationSeconds)
+        source = try container.decode(String.self, forKey: .source)
+        caloriesKcal = try container.decodeIfPresent(Double.self, forKey: .caloriesKcal)
+        treadmillInclinePercent = try container.decodeIfPresent(Double.self, forKey: .treadmillInclinePercent)
+            ?? container.decodeIfPresent(Double.self, forKey: .treadmillInclineDegrees)
+        treadmillSpeedKmh = try container.decodeIfPresent(Double.self, forKey: .treadmillSpeedKmh)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(endedAt, forKey: .endedAt)
+        try container.encode(distanceKm, forKey: .distanceKm)
+        try container.encode(durationSeconds, forKey: .durationSeconds)
+        try container.encode(source, forKey: .source)
+        try container.encodeIfPresent(caloriesKcal, forKey: .caloriesKcal)
+        try container.encodeIfPresent(treadmillInclinePercent, forKey: .treadmillInclinePercent)
+        try container.encodeIfPresent(treadmillSpeedKmh, forKey: .treadmillSpeedKmh)
+    }
 
     func toDomain() -> RunRecord {
         RunRecord(
@@ -493,7 +545,7 @@ private struct LocalRunRecord: Codable {
             durationSeconds: durationSeconds,
             source: RunRecordSource(rawValue: source) ?? .map,
             caloriesKcal: caloriesKcal,
-            treadmillInclineDegrees: treadmillInclineDegrees,
+            treadmillInclinePercent: treadmillInclinePercent,
             treadmillSpeedKmh: treadmillSpeedKmh
         )
     }

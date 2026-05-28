@@ -395,7 +395,7 @@ struct CalendarView: View {
                         .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 10)
-                            .background(Color.blue)
+                            .background(Color.red)
                             .clipShape(RoundedRectangle(cornerRadius: 10))
                     }
                     .buttonStyle(.plain)
