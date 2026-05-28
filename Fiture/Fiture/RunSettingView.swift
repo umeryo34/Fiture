@@ -34,7 +34,7 @@ struct RunSettingView: View {
                     Text("Run")
                         .font(.title)
                         .fontWeight(.bold)
-                        .foregroundColor(.blue)
+                        .foregroundColor(.red)
                 }
                 .padding(.top, 20)
                 
@@ -48,7 +48,7 @@ struct RunSettingView: View {
                         Text("\(String(format: "%.1f", runTarget.attempt)) / \(String(format: "%.1f", runTarget.target)) \(selectedUnit)")
                             .font(.title2)
                             .fontWeight(.semibold)
-                            .foregroundColor(.blue)
+                            .foregroundColor(.red)
                         
                         Text("\(String(format: "%.0f", runTarget.progressPercentage))% 達成")
                             .font(.subheadline)
@@ -63,7 +63,7 @@ struct RunSettingView: View {
                                     .cornerRadius(4)
                                 
                                 Rectangle()
-                                    .fill(Color.blue)
+                                    .fill(Color.red)
                                     .frame(width: geometry.size.width * (runTarget.progressPercentage / 100.0), height: 8)
                                     .cornerRadius(4)
                             }
@@ -124,7 +124,7 @@ struct RunSettingView: View {
                             .frame(height: 50)
                     }
                 }
-                .background(isFormValid ? Color.blue : Color.gray)
+                .background(isFormValid ? Color.red : Color.gray)
                 .cornerRadius(12)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 20)

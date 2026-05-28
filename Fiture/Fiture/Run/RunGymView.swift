@@ -13,7 +13,7 @@ struct RunGymView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var motion: MotionType = .running
-    @State private var angle: Double = 0
+    @State private var inclinePercent: Double = 0
     @State private var speedKmPerHour: Double = 8
 
     @State private var isRunning = false
@@ -58,10 +58,10 @@ struct RunGymView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("傾斜: \(Int(angle))°")
+                    Text("傾斜: \(Int(inclinePercent))%")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
-                    Slider(value: $angle, in: 0...15, step: 1)
+                    Slider(value: $inclinePercent, in: 0...15, step: 1)
                         .disabled(isRunning)
                 }
 
@@ -88,7 +88,7 @@ struct RunGymView: View {
                     VStack {
                         Text(String(format: "%.2f", isRunning ? currentDistanceKm : totalDistanceKm))
                             .font(.system(size: 28, weight: .bold))
-                            .foregroundColor(.blue)
+                            .foregroundColor(.red)
                         Text("km")
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -96,7 +96,7 @@ struct RunGymView: View {
                     VStack {
                         Text(formatTime(elapsedTime))
                             .font(.system(size: 28, weight: .bold))
-                            .foregroundColor(.blue)
+                            .foregroundColor(.red)
                         Text("時間")
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -144,7 +144,7 @@ struct RunGymView: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.blue)
+                        .background(Color.red)
                         .cornerRadius(12)
                     }
                 }
@@ -273,7 +273,7 @@ struct RunGymView: View {
             durationSeconds: elapsedTime,
             source: source,
             caloriesKcal: nil,
-            treadmillInclineDegrees: angle,
+            treadmillInclinePercent: inclinePercent,
             treadmillSpeedKmh: speedKmPerHour
         )
         NotificationCenter.default.post(name: .runRecordDidSave, object: nil)
