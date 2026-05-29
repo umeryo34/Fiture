@@ -30,11 +30,11 @@ struct RootView: View {
     
     private var mainTabView: some View {
         TabView {
-            FoodView()
+            HomeView()
                 .environmentObject(authManager)
                 .tabItem {
                     Image(systemName: "fork.knife")
-                    Text("Food")
+                    Text("Home")
                 }
             
             RunView()

@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import PhotosUI
 
 struct UserView: View {
     @EnvironmentObject var authManager: AuthManager
@@ -131,8 +130,6 @@ struct EditProfileView: View {
     @EnvironmentObject var authManager: AuthManager
     @State private var userName: String = ""
     @State private var userEmail: String = ""
-    @State private var selectedPhoto: PhotosPickerItem?
-    @State private var selectedImage: UIImage?
     @State private var isLoading: Bool = false
     @State private var showError: Bool = false
     @State private var errorMessage: String = ""
@@ -142,49 +139,6 @@ struct EditProfileView: View {
         NavigationView {
             VStack(spacing: 30) {
                 VStack(spacing: 20) {
-                    VStack(spacing: 10) {
-                        // プロフィール画像
-                        if let selectedImage = selectedImage {
-                            Image(uiImage: selectedImage)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 100, height: 100)
-                                .clipShape(Circle())
-                        } else if let profileImageUrl = authManager.currentUser?.profileImageUrl, !profileImageUrl.isEmpty {
-                            AsyncImage(url: URL(string: profileImageUrl)) { image in
-                                image
-                                    .resizable()
-                                    .scaledToFill()
-                            } placeholder: {
-                                Image(systemName: "person.circle.fill")
-                                    .font(.system(size: 100))
-                                    .foregroundColor(.purple)
-                            }
-                            .frame(width: 100, height: 100)
-                            .clipShape(Circle())
-                        } else {
-                            Image(systemName: "person.circle.fill")
-                                .font(.system(size: 100))
-                                .foregroundColor(.purple)
-                        }
-                        
-                        PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                            Text("写真を変更")
-                                .font(.subheadline)
-                                .foregroundColor(.blue)
-                        }
-                        .onChange(of: selectedPhoto) { newItem in
-                            Task {
-                                if let data = try? await newItem?.loadTransferable(type: Data.self),
-                                   let image = UIImage(data: data) {
-                                    await MainActor.run {
-                                        selectedImage = image
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
                     VStack(alignment: .leading, spacing: 8) {
                         Text("名前")
                             .font(.headline)
@@ -271,25 +225,11 @@ struct EditProfileView: View {
                     return
                 }
                 
-                var profileImageUrl: String? = authManager.currentUser?.profileImageUrl
-                
-                // 画像が選択されている場合、ローカルへ保存
-                if let selectedImage = selectedImage,
-                   let imageData = selectedImage.jpegData(compressionQuality: 0.8) {
-                    let fileName = "\(userId.uuidString)_\(UUID().uuidString).jpg"
-                    let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
-                    if let documents {
-                        let fileURL = documents.appendingPathComponent(fileName)
-                        try imageData.write(to: fileURL, options: .atomic)
-                        profileImageUrl = fileURL.absoluteString
-                    }
-                }
-                
                 let updatedUser = try LocalDataStore.shared.updateUser(
                     userId: userId,
                     name: userName,
                     email: userEmail,
-                    profileImageUrl: profileImageUrl
+                    profileImageUrl: nil
                 )
                 
                 await MainActor.run {

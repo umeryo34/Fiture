@@ -108,9 +108,6 @@ struct WeightChartView: View {
     var body: some View {
         if weightEntries.isEmpty {
             VStack(spacing: 12) {
-                Image(systemName: "chart.line.uptrend.xyaxis")
-                    .font(.system(size: 50))
-                    .foregroundColor(.gray)
                 Text("体重データがありません")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
@@ -184,7 +181,7 @@ struct WeightChartView: View {
                                             }
                                         }
                                     }
-                                    .stroke(Color.purple, lineWidth: 3)
+                                    .stroke(Color.red, lineWidth: 3)
                                     
                                     // データポイント
                                     ForEach(Array(chartData.enumerated()), id: \.offset) { index, data in
@@ -193,7 +190,7 @@ struct WeightChartView: View {
                                         let y = h * (1 - CGFloat(normalized))
                                         
                                         Circle()
-                                            .fill(Color.purple)
+                                            .fill(Color.red)
                                             .frame(width: 8, height: 8)
                                             .position(x: x, y: y)
                                     }
@@ -202,7 +199,7 @@ struct WeightChartView: View {
                                     let y = h * (1 - CGFloat(normalized))
                                     
                                     Circle()
-                                        .fill(Color.purple)
+                                        .fill(Color.red)
                                         .frame(width: 8, height: 8)
                                         .position(x: w / 2, y: y)
                                 }

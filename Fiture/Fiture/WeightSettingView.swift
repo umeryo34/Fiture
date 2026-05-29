@@ -20,20 +20,11 @@ struct WeightSettingView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 30) {
-                // ヘッダー
-                VStack(spacing: 15) {
-                    Image("weight")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 80, height: 80)
-                        .clipShape(RoundedRectangle(cornerRadius: 15))
-                    
-                    Text("体重")
-                        .font(.title)
-                        .fontWeight(.bold)
-                        .foregroundColor(.purple)
-                }
-                .padding(.top, 20)
+                Text("体重")
+                    .font(.title)
+                    .fontWeight(.bold)
+                    .foregroundColor(.black)
+                    .padding(.top, 20)
                 
                 // 現在の体重表示
                 if let weightEntry = weightTargetManager.weightEntry {
@@ -45,7 +36,7 @@ struct WeightSettingView: View {
                         Text("\(String(format: "%.1f", weightEntry.weight)) kg")
                             .font(.title2)
                             .fontWeight(.semibold)
-                            .foregroundColor(.purple)
+                            .foregroundColor(.red)
                         
                         Text(formatDate(weightEntry.date))
                             .font(.subheadline)
@@ -101,7 +92,7 @@ struct WeightSettingView: View {
                             .frame(height: 50)
                     }
                 }
-                .background(isFormValid ? Color.purple : Color.gray)
+                .background(isFormValid ? Color.red : Color.gray)
                 .cornerRadius(12)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 20)
@@ -161,7 +152,7 @@ struct WeightSettingView: View {
                 try await weightTargetManager.fetchWeightEntries(userId: userId, days: 30)
                 
                 // 体重データ更新を通知
-                NotificationCenter.default.post(name: .init("WeightDataDidUpdate"), object: nil)
+                NotificationCenter.default.post(name: .weightDataDidUpdate, object: nil)
                 
                 await MainActor.run {
                     isLoading = false

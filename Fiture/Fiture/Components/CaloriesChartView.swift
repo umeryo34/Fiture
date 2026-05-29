@@ -29,9 +29,6 @@ struct CaloriesChartView: View {
     var body: some View {
         if chartData.isEmpty {
             VStack(spacing: 12) {
-                Image(systemName: "chart.bar.fill")
-                    .font(.system(size: 50))
-                    .foregroundColor(.gray)
                 Text("カロリーデータがありません")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
