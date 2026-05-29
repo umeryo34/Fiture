@@ -73,15 +73,13 @@ struct RunGymView: View {
                         .disabled(isRunning)
                 }
 
-                Text("消費カロリーはヘルスケアのアクティブエネルギーから読み込みます（Foodタブの収支に反映）。")
+                Text("消費カロリーはヘルスケアのアクティブエネルギーから読み込みます（Homeの収支に反映）。")
                     .font(.caption2)
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, 16)
-            .padding(.top, 20)
-
-            Spacer()
+            .padding(.top, 8)
 
             VStack(spacing: 15) {
                 HStack(spacing: 40) {

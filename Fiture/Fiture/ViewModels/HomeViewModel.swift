@@ -46,37 +46,18 @@ class HomeViewModel: ObservableObject {
         totalCalories - burnedCaloriesKcal
     }
 
+    private var dailyBalance: DailyCalorieBalance {
+        DailyCalorieBalance(
+            foodIntakeKcal: totalCalories,
+            activeEnergyBurnedKcal: burnedCaloriesKcal,
+            targetKcal: targetCalories,
+            weightKg: FitnessProfileStorage.load(userId: authManager?.currentUser?.id).weightKg
+        )
+    }
+
     /// 消費カロリーを引いたあとでも目標を超えている kcal（超過時のみ正の値）
     var excessCaloriesOverTarget: Double? {
-        guard let target = targetCalories, target > 0 else { return nil }
-        let excess = netCaloriesAfterBurn - target
-        return excess > 0 ? excess : nil
-    }
-
-    /// 超過分を落とすための運動時間見積もり（体重が必要）
-    var excessBurnExercisePlan: ExcessBurnExercisePlan? {
-        excessBurnExercisePlan(
-            gymWalkingSpeedKmh: ExcessBurnExercisePlanner.defaultGymWalkingSpeedKmh,
-            gymWalkingInclinePercent: ExcessBurnExercisePlanner.defaultGymWalkingInclinePercent
-        )
-    }
-
-    /// ジム側の勾配・速度を指定した見積もり
-    func excessBurnExercisePlan(
-        gymWalkingSpeedKmh: Double,
-        gymWalkingInclinePercent: Double
-    ) -> ExcessBurnExercisePlan? {
-        guard let excess = excessCaloriesOverTarget else { return nil }
-        guard let weight = FitnessProfileStorage.load(userId: authManager?.currentUser?.id).weightKg,
-              weight > 0 else {
-            return nil
-        }
-        return ExcessBurnExercisePlanner.plan(
-            excessKcal: excess,
-            weightKg: weight,
-            gymWalkingSpeedKmh: gymWalkingSpeedKmh,
-            gymWalkingInclinePercent: gymWalkingInclinePercent
-        )
+        dailyBalance.excessOverTargetKcal
     }
 
     var caloriesEntries: [CaloriesEntry] {
