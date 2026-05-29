@@ -38,6 +38,7 @@ final class LocalDataStore {
     // MARK: - Public auth
 
     func register(name: String, email: String, password: String) throws -> User {
+        let guestId = storedGuestUserId()
         var state = loadState()
         let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
 
@@ -57,15 +58,22 @@ final class LocalDataStore {
         )
         state.users.append(user)
         saveState(state)
+        if let guestId {
+            migrateUserScopedData(from: guestId, to: user.id)
+        }
         UserDefaults.standard.set(user.id.uuidString, forKey: sessionUserIdKey)
         return user.toDomain()
     }
 
     func login(email: String, password: String) throws -> User {
+        let guestId = storedGuestUserId()
         let state = loadState()
         let normalizedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard let user = state.users.first(where: { $0.email.lowercased() == normalizedEmail && $0.password == password }) else {
             throw LocalDataStoreError.invalidCredentials
+        }
+        if let guestId {
+            migrateUserScopedData(from: guestId, to: user.id)
         }
         UserDefaults.standard.set(user.id.uuidString, forKey: sessionUserIdKey)
         return user.toDomain()
@@ -274,12 +282,83 @@ final class LocalDataStore {
     }
 
     func weightEntries(userId: UUID, days: Int) -> [WeightEntry] {
-        let end = Date()
-        let start = Calendar.current.date(byAdding: .day, value: -days, to: end) ?? end
+        let calendar = Calendar.current
+        let endDay = startOfDay(Date())
+        let startDay = calendar.date(byAdding: .day, value: -(max(days, 1) - 1), to: endDay) ?? endDay
         return loadState().weightEntries
-            .filter { $0.userId == userId && $0.date >= startOfDay(start) }
+            .filter { $0.userId == userId && $0.date >= startDay && $0.date <= endDay }
             .sorted { $0.date < $1.date }
             .map { $0.toDomain() }
+    }
+
+    /// ゲスト利用中に溜まった記録を、ログイン/登録後のユーザーへ引き継ぐ
+    func migrateUserScopedData(from sourceUserId: UUID, to destinationUserId: UUID) {
+        guard sourceUserId != destinationUserId else { return }
+        var state = loadState()
+
+        let sourceWeights = state.weightEntries.filter { $0.userId == sourceUserId }
+        state.weightEntries.removeAll { $0.userId == sourceUserId }
+
+        for source in sourceWeights {
+            if let existingIndex = state.weightEntries.firstIndex(where: {
+                $0.userId == destinationUserId && Calendar.current.isDate($0.date, inSameDayAs: source.date)
+            }) {
+                if source.updatedAt >= state.weightEntries[existingIndex].updatedAt {
+                    state.weightEntries[existingIndex].weight = source.weight
+                    state.weightEntries[existingIndex].updatedAt = source.updatedAt
+                }
+            } else {
+                state.weightEntries.append(
+                    LocalWeightEntry(
+                        id: source.id,
+                        userId: destinationUserId,
+                        date: source.date,
+                        weight: source.weight,
+                        createdAt: source.createdAt,
+                        updatedAt: source.updatedAt
+                    )
+                )
+            }
+        }
+
+        state.caloriesEntries = state.caloriesEntries.map { entry in
+            guard entry.userId == sourceUserId else { return entry }
+            return LocalCaloriesEntry(
+                id: entry.id,
+                userId: destinationUserId,
+                date: entry.date,
+                foodName: entry.foodName,
+                calories: entry.calories,
+                protein: entry.protein,
+                fat: entry.fat,
+                carbs: entry.carbs,
+                createdAt: entry.createdAt
+            )
+        }
+
+        state.caloriesTargets = state.caloriesTargets.map { entry in
+            guard entry.userId == sourceUserId else { return entry }
+            return LocalCaloriesTarget(
+                userId: destinationUserId,
+                date: entry.date,
+                target: entry.target,
+                createdAt: entry.createdAt,
+                updatedAt: entry.updatedAt
+            )
+        }
+
+        saveState(state)
+    }
+
+    private func storedGuestUserId() -> UUID? {
+        guard let raw = UserDefaults.standard.string(forKey: guestUserIdKey) else { return nil }
+        return UUID(uuidString: raw)
+    }
+
+    /// 起動時: ゲスト時代の記録がログインユーザーに紐づいていない場合に引き継ぐ
+    func migrateGuestDataIfNeeded(for userId: UUID) {
+        guard let guestId = storedGuestUserId(), guestId != userId else { return }
+        migrateUserScopedData(from: guestId, to: userId)
     }
 
     // MARK: - Calories

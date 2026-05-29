@@ -32,6 +32,7 @@ class AuthManager: ObservableObject {
     
     func fetchCurrentUser() async {
         let user = LocalDataStore.shared.currentUser() ?? LocalDataStore.shared.ensureGuestSession()
+        LocalDataStore.shared.migrateGuestDataIfNeeded(for: user.id)
         await MainActor.run {
             currentUser = user
             isAuthenticated = true

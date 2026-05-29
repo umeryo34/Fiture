@@ -1,5 +1,5 @@
 //
-//  FoodView.swift
+//  HomeView.swift
 //  Fiture
 //
 //  Created by 梅澤遼 on 2025/10/27.
@@ -8,22 +8,72 @@
 import SwiftUI
 import Combine
 
-struct FoodView: View {
+struct HomeView: View {
     @EnvironmentObject var authManager: AuthManager
     @StateObject private var viewModel = HomeViewModel()
+    @StateObject private var weightTargetManager = WeightTargetManager()
+    @StateObject private var caloriesTargetManager = CaloriesTargetManager()
+    @State private var caloriesHistory: [(date: Date, totalCalories: Double)] = []
+    @State private var hasTodayWeight = false
     
     var body: some View {
-        FoodViewContent(viewModel: viewModel)
+        HomeViewContent(
+            viewModel: viewModel,
+            weightTargetManager: weightTargetManager,
+            caloriesTargetManager: caloriesTargetManager,
+            caloriesHistory: caloriesHistory,
+            hasTodayWeight: hasTodayWeight
+        )
             .environmentObject(authManager)
             .onAppear {
                 viewModel.setAuthManager(authManager)
             }
+            .task(id: authManager.currentUser?.id) {
+                await refreshChartData()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .weightDataDidUpdate)) { _ in
+                Task { await refreshWeightDataOnly() }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .caloriesDataDidUpdate)) { _ in
+                Task { await refreshChartData() }
+            }
+    }
+
+    private func refreshWeightDataOnly() async {
+        guard let userId = authManager.currentUser?.id else { return }
+        try? await weightTargetManager.fetchWeightEntry(userId: userId, date: Date())
+        try? await weightTargetManager.fetchWeightEntries(userId: userId, days: 30)
+        await MainActor.run {
+            hasTodayWeight = weightTargetManager.weightEntry != nil
+        }
+    }
+
+    private func refreshChartData() async {
+        guard let userId = authManager.currentUser?.id else { return }
+
+        async let fetchWeightEntries = weightTargetManager.fetchWeightEntries(userId: userId, days: 30)
+        async let fetchTodayWeight = weightTargetManager.fetchWeightEntry(userId: userId, date: Date())
+        async let fetchCalories = caloriesTargetManager.fetchCaloriesHistory(userId: userId, days: 30)
+
+        _ = try? await fetchWeightEntries
+        _ = try? await fetchTodayWeight
+        let history = (try? await fetchCalories) ?? []
+
+        await MainActor.run {
+            hasTodayWeight = weightTargetManager.weightEntry != nil
+            caloriesHistory = history
+        }
     }
 }
 
-private struct FoodViewContent: View {
+private struct HomeViewContent: View {
     @EnvironmentObject var authManager: AuthManager
     @ObservedObject var viewModel: HomeViewModel
+    @ObservedObject var weightTargetManager: WeightTargetManager
+    @ObservedObject var caloriesTargetManager: CaloriesTargetManager
+    let caloriesHistory: [(date: Date, totalCalories: Double)]
+    let hasTodayWeight: Bool
+    @State private var showingWeightSetting = false
     
     var body: some View {
         NavigationStack {
@@ -42,6 +92,9 @@ private struct FoodViewContent: View {
 
                     CalorieBalanceCard(viewModel: viewModel)
                         .padding(.top, 12)
+
+                    homeChartsSection
+                        .padding(.top, 16)
                 }
                 .padding(.bottom, 16)
             }
@@ -62,6 +115,14 @@ private struct FoodViewContent: View {
             CaloriesSearchView()
                 .environmentObject(authManager)
                 .environmentObject(viewModel.getCaloriesTargetManager())
+        }
+        .sheet(isPresented: $showingWeightSetting) {
+            WeightSettingView()
+                .environmentObject(authManager)
+                .environmentObject(weightTargetManager)
+                .onAppear {
+                    weightTargetManager.selectedDate = Date()
+                }
         }
         .task {
             // 初回表示時にデータを取得
@@ -150,14 +211,54 @@ private struct FoodViewContent: View {
         }
     }
 
+    private var homeChartsSection: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("体重の変化")
+                    .font(.headline)
+                    .fontWeight(.bold)
+                    .foregroundColor(.black)
+                    .padding(.horizontal, 20)
+
+                WeightChartView(weightEntries: weightTargetManager.weightEntries)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 15)
+                            .fill(Color(.systemGray6))
+                    )
+                    .padding(.horizontal, 20)
+            }
+
+            VStack(alignment: .leading, spacing: 12) {
+                Text("カロリー摂取量")
+                    .font(.headline)
+                    .fontWeight(.bold)
+                    .foregroundColor(.black)
+                    .padding(.horizontal, 20)
+
+                CaloriesChartView(chartData: caloriesHistory)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 15)
+                            .fill(Color(.systemGray6))
+                    )
+                    .padding(.horizontal, 20)
+            }
+        }
+    }
+
     private var addMealButton: some View {
         Button {
-            viewModel.showingCaloriesInput = true
+            if hasTodayWeight {
+                viewModel.showingCaloriesInput = true
+            } else {
+                showingWeightSetting = true
+            }
         } label: {
             HStack {
                 Image(systemName: "plus.circle.fill")
                     .font(.system(size: 18))
-                Text("食事を追加")
+                Text(hasTodayWeight ? "食事を追加" : "体重を記録")
                     .font(.headline)
             }
             .foregroundColor(.white)
@@ -365,18 +466,10 @@ struct CaloriesTargetSettingView: View {
         NavigationView {
             VStack(spacing: 30) {
                 // ヘッダー
-                VStack(spacing: 15) {
-                    Image("calories")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 80, height: 80)
-                        .clipShape(RoundedRectangle(cornerRadius: 15))
-                    
-                    Text("カロリー目標設定")
-                        .font(.title)
-                        .fontWeight(.bold)
-                        .foregroundColor(.green)
-                }
+                Text("カロリー目標設定")
+                    .font(.title)
+                    .fontWeight(.bold)
+                    .foregroundColor(.black)
                 .padding(.top, 20)
                 
                 // 目標設定フォーム
@@ -477,5 +570,5 @@ struct CaloriesTargetSettingView: View {
 
 
 #Preview {
-    FoodView()
+    HomeView()
 }

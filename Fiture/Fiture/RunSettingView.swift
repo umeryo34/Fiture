@@ -23,20 +23,11 @@ struct RunSettingView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 30) {
-                // ヘッダー
-                VStack(spacing: 15) {
-                    Image("run")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 80, height: 80)
-                        .clipShape(RoundedRectangle(cornerRadius: 15))
-                    
-                    Text("Run")
-                        .font(.title)
-                        .fontWeight(.bold)
-                        .foregroundColor(.red)
-                }
-                .padding(.top, 20)
+                Text("Run")
+                    .font(.title)
+                    .fontWeight(.bold)
+                    .foregroundColor(.black)
+                    .padding(.top, 20)
                 
                 // 現在の目標表示
                 if let runTarget = runTargetManager.runTarget {

@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import UIKit
 
 struct CalendarView: View {
     private let calendar = Calendar.current
@@ -17,16 +16,6 @@ struct CalendarView: View {
 
     @State private var weekStartDate: Date
     @State private var entriesByDayKey: [String: [CaloriesEntry]] = [:]
-    @State private var quickAddSlot: MealSlot = .breakfast
-    @State private var quickAddPhotoImage: UIImage?
-    @State private var photoPathByCellKey: [String: String] = [:]
-    @State private var previewImage: UIImage?
-    @State private var showingPhotoPreview = false
-    @State private var previewTargetDate: Date
-    @State private var previewTargetSlot: MealSlot
-    @State private var showingCameraCapture = false
-    @State private var showingLibraryPicker = false
-
     enum MealSlot: String, CaseIterable {
         case breakfast
         case lunch
@@ -47,8 +36,6 @@ struct CalendarView: View {
         self._selectedDate = selectedDate
         self.onDateSelected = onDateSelected
         _weekStartDate = State(initialValue: Calendar.current.startOfWeek(for: selectedDate.wrappedValue))
-        _previewTargetDate = State(initialValue: selectedDate.wrappedValue)
-        _previewTargetSlot = State(initialValue: .breakfast)
     }
 
     var body: some View {
@@ -82,15 +69,11 @@ struct CalendarView: View {
             Spacer(minLength: 8)
         }
         .background(Color(.systemBackground))
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            quickAddPanel
-        }
         .navigationTitle("カレンダー")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             weekStartDate = calendar.startOfWeek(for: selectedDate)
             loadWeekEntries()
-            loadPhotoMappings()
         }
         .onChange(of: selectedDate) { _, newDate in
             weekStartDate = calendar.startOfWeek(for: newDate)
@@ -98,48 +81,9 @@ struct CalendarView: View {
         }
         .onChange(of: weekStartDate) { _, _ in
             loadWeekEntries()
-            loadPhotoMappings()
         }
         .onReceive(NotificationCenter.default.publisher(for: .caloriesDataDidUpdate)) { _ in
             loadWeekEntries()
-            loadPhotoMappings()
-        }
-        .fullScreenCover(isPresented: $showingCameraCapture) {
-            CalendarCameraEntryView(
-                onCaptured: { image in
-                    openPreview(with: image)
-                },
-                onCancel: {
-                    showingCameraCapture = false
-                }
-            )
-        }
-        .sheet(isPresented: $showingLibraryPicker) {
-            CalendarImagePicker(sourceType: .photoLibrary) { image in
-                if let image {
-                    openPreview(with: image)
-                }
-                showingLibraryPicker = false
-            }
-        }
-        .sheet(isPresented: $showingPhotoPreview) {
-            if let previewImage {
-                CalendarCellPhotoPreviewView(
-                    image: previewImage,
-                    targetDate: $previewTargetDate,
-                    targetSlot: $previewTargetSlot,
-                    onClose: {
-                        showingPhotoPreview = false
-                    },
-                    onSubmit: { image, targetDate, targetSlot in
-                        quickAddPhotoImage = image
-                        quickAddSlot = targetSlot
-                        selectedDate = targetDate
-                        savePhotoForCell(image: image, day: targetDate, slot: targetSlot)
-                        showingPhotoPreview = false
-                    }
-                )
-            }
         }
     }
 
@@ -227,41 +171,27 @@ struct CalendarView: View {
         let items = entriesForSlot(entries, slot: slot)
         let total = items.reduce(0) { $0 + $1.calories }
         let hasEntry = !items.isEmpty
-        let photoPath = photoPathByCellKey[cellKey(day: day, slot: slot)]
-
         return Button {
             selectedDate = day
             onDateSelected(day)
         } label: {
-            ZStack {
-                if let photoPath,
-                   let image = UIImage(contentsOfFile: photoPath) {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .clipped()
-                        .opacity(0.75)
-                }
-
-                VStack(spacing: 2) {
+            VStack(spacing: 2) {
                 if hasEntry {
                     Text("\(Int(total.rounded()))kcal")
                         .font(.caption2.weight(.semibold))
-                        .foregroundColor(photoPath == nil ? (isSelected ? .red : .primary) : .white)
+                        .foregroundColor(isSelected ? .red : .primary)
                     Text("\(items.count)件")
                         .font(.caption2)
-                        .foregroundColor(photoPath == nil ? .secondary : .white.opacity(0.95))
+                        .foregroundColor(.secondary)
                 } else {
                     Text("-")
                         .font(.caption)
-                        .foregroundColor(photoPath == nil ? Color.secondary.opacity(0.8) : .white.opacity(0.95))
-                    }
+                        .foregroundColor(Color.secondary.opacity(0.8))
                 }
             }
             .frame(width: mealColumnWidth)
             .frame(height: 58)
-            .background(photoPath == nil ? Color(.systemGray6) : Color.black.opacity(0.25))
+            .background(Color(.systemGray6))
             .overlay(
                 RoundedRectangle(cornerRadius: 0)
                     .stroke(Color(.systemGray4), lineWidth: 1)
@@ -341,78 +271,6 @@ struct CalendarView: View {
         let idx = calendar.component(.weekday, from: date) - 1
         guard symbols.indices.contains(idx) else { return "" }
         return symbols[idx]
-    }
-
-    private func cellKey(day: Date, slot: MealSlot) -> String {
-        "\(dateKey(day))_\(slot.rawValue)"
-    }
-
-    private func loadPhotoMappings() {
-        guard let userId = authManager.currentUser?.id else {
-            photoPathByCellKey = [:]
-            return
-        }
-        photoPathByCellKey = CalendarCellPhotoStore.load(userId: userId)
-    }
-
-    private func openPreview(with image: UIImage) {
-        previewImage = image
-        previewTargetDate = selectedDate
-        previewTargetSlot = quickAddSlot
-        showingPhotoPreview = true
-    }
-
-    private var quickAddPanel: some View {
-        VStack(spacing: 8) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 10) {
-                    Button {
-                        if UIImagePickerController.isSourceTypeAvailable(.camera) {
-                            showingCameraCapture = true
-                        }
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "camera.fill")
-                            Text("撮影")
-                        }
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(Color.red)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                    }
-                    .buttonStyle(.plain)
-
-                    Button {
-                        showingLibraryPicker = true
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "photo.on.rectangle")
-                            Text("画像アップロード")
-                        }
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                            .background(Color.red)
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
-        .padding(.bottom, 8)
-        .background(Color(.systemBackground))
-    }
-
-    private func savePhotoForCell(image: UIImage, day: Date, slot: MealSlot) {
-        guard let userId = authManager.currentUser?.id else { return }
-        let key = cellKey(day: day, slot: slot)
-        CalendarCellPhotoStore.saveImage(image, userId: userId, cellKey: key)
-        loadPhotoMappings()
     }
 
     private func slotFromFoodName(_ foodName: String) -> MealSlot? {

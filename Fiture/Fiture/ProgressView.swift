@@ -19,16 +19,11 @@ struct ProgressView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Image("weight")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 30, height: 30)
-                        Text("体重の変化")
-                            .font(.headline)
-                            .fontWeight(.bold)
-                    }
-                    .padding(.horizontal, 20)
+                    Text("体重の変化")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 20)
                     
                     if hasTodayWeight {
                         // 今日の体重がある場合はグラフを表示
@@ -70,16 +65,11 @@ struct ProgressView: View {
                 
                 // カロリーグラフ
                 VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Image("calories")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 30, height: 30)
-                        Text("カロリー摂取量")
-                            .font(.headline)
-                            .fontWeight(.bold)
-                    }
-                    .padding(.horizontal, 20)
+                    Text("カロリー摂取量")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 20)
                     
                     CaloriesChartView(chartData: caloriesHistory)
                         .padding(.vertical, 10)
@@ -141,7 +131,7 @@ struct ProgressView: View {
                 print("ユーザーIDが取得できません")
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .init("WeightDataDidUpdate"))) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .weightDataDidUpdate)) { _ in
             // 体重データが更新された時に再チェック
             Task {
                 if let userId = authManager.currentUser?.id {

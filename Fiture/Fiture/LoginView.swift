@@ -121,9 +121,9 @@ struct LoginView: View {
         
         Task {
             do {
-                let user = try LocalDataStore.shared.login(email: email, password: password)
+                _ = try LocalDataStore.shared.login(email: email, password: password)
+                await authManager.fetchCurrentUser()
                 await MainActor.run {
-                    authManager.currentUser = user
                     authManager.isAuthenticated = true
                     isLoading = false
                     dismiss()
