@@ -50,7 +50,6 @@ struct HomeView: View {
     }
 
     private func syncRunTabReminder() {
-        guard Calendar.current.isDateInToday(viewModel.selectedDate) else { return }
         runCalorieReminder.apply(excessKcal: viewModel.excessCaloriesOverTarget)
     }
 
@@ -95,15 +94,8 @@ private struct HomeViewContent: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    calendarLink
-                        .padding(.horizontal, 20)
-                        .padding(.top, 20)
-                        .padding(.bottom, 8)
-
-                    Spacer()
-                        .frame(height: 20)
-
                     calorieSummarySection
+                        .padding(.top, 20)
                         .padding(.bottom, 10)
 
                     CalorieBalanceCard(viewModel: viewModel)
@@ -123,7 +115,7 @@ private struct HomeViewContent: View {
                 CaloriesProgressInputView(
                     caloriesTargetManager: viewModel.getCaloriesTargetManager(),
                     userId: userId,
-                    date: viewModel.selectedDate
+                    date: Date()
                 )
             }
         }
@@ -141,59 +133,25 @@ private struct HomeViewContent: View {
                 }
         }
         .task {
-            // 初回表示時にデータを取得
-            viewModel.selectedDate = Date()
             await viewModel.fetchCaloriesData()
             syncRunTabReminder()
         }
         .onReceive(NotificationCenter.default.publisher(for: .caloriesDataDidUpdate)) { _ in
-            // カロリーデータが更新された時に再取得（選択された日付のデータ）
             Task {
-                await viewModel.fetchCaloriesDataForDate(viewModel.selectedDate)
+                await viewModel.fetchCaloriesData()
                 syncRunTabReminder()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .runRecordDidSave)) { _ in
             Task {
-                await viewModel.fetchCaloriesDataForDate(viewModel.selectedDate)
+                await viewModel.fetchCaloriesData()
                 syncRunTabReminder()
             }
         }
     }
 
     private func syncRunTabReminder() {
-        let isToday = Calendar.current.isDateInToday(viewModel.selectedDate)
-        guard isToday else { return }
         runCalorieReminder.apply(excessKcal: viewModel.excessCaloriesOverTarget)
-    }
-
-    private var calendarLink: some View {
-        NavigationLink {
-            CalendarView(selectedDate: $viewModel.selectedDate) { newDate in
-                viewModel.selectedDate = newDate
-                Task {
-                    await viewModel.fetchCaloriesDataForDate(newDate)
-                }
-            }
-        } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "calendar")
-                    .font(.system(size: 16, weight: .semibold))
-                Text("カレンダーに移動")
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .semibold))
-            }
-            .foregroundColor(.black)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 11)
-            .background(Color(.systemGray6))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-        }
-        .buttonStyle(.plain)
     }
 
     @ViewBuilder

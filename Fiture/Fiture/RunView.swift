@@ -35,7 +35,6 @@ struct RunView: View {
                 }
                 .padding(.bottom, 24)
             }
-            .navigationTitle("Run")
             .navigationBarTitleDisplayMode(.inline)
         }
     }

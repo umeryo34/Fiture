@@ -12,9 +12,7 @@ import SwiftUI
 class HomeViewModel: ObservableObject {
     @Published var showingTargetSetting = false
     @Published var showingCaloriesInput = false
-    @Published var showingDatePicker = false
     @Published var showingSearch = false
-    @Published var selectedDate: Date = Date()
     @Published var isLoading = false
     /// 選択日のヘルスケア・アクティブエネルギー合計（kcal）
     @Published var burnedCaloriesKcal: Double = 0
@@ -95,7 +93,7 @@ class HomeViewModel: ObservableObject {
     // MARK: - Methods
     
     func fetchCaloriesData() async {
-        await fetchCaloriesDataForDate(selectedDate)
+        await fetchCaloriesDataForDate(Date())
     }
     
     func fetchCaloriesDataForDate(_ date: Date) async {
