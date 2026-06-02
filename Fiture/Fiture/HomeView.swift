@@ -56,7 +56,7 @@ struct HomeView: View {
     private func refreshWeightDataOnly() async {
         guard let userId = authManager.currentUser?.id else { return }
         try? await weightTargetManager.fetchWeightEntry(userId: userId, date: Date())
-        try? await weightTargetManager.fetchWeightEntries(userId: userId, days: 30)
+        try? await weightTargetManager.fetchWeightEntries(userId: userId, days: 7)
         await MainActor.run {
             hasTodayWeight = weightTargetManager.weightEntry != nil
         }
@@ -65,7 +65,7 @@ struct HomeView: View {
     private func refreshChartData() async {
         guard let userId = authManager.currentUser?.id else { return }
 
-        async let fetchWeightEntries = weightTargetManager.fetchWeightEntries(userId: userId, days: 30)
+        async let fetchWeightEntries = weightTargetManager.fetchWeightEntries(userId: userId, days: 7)
         async let fetchTodayWeight = weightTargetManager.fetchWeightEntry(userId: userId, date: Date())
         async let fetchCalories = caloriesTargetManager.fetchCaloriesHistory(userId: userId, days: 30)
 
