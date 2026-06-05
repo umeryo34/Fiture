@@ -8,14 +8,41 @@
 import SwiftUI
 
 struct RunView: View {
+    @EnvironmentObject var authManager: AuthManager
+    @ObservedObject var viewModel: RunViewModel
+    @State private var gymWalkingSpeedKmh = ExcessBurnExercisePlanner.defaultGymWalkingSpeedKmh
+    @State private var gymWalkingInclinePercent = ExcessBurnExercisePlanner.defaultGymWalkingInclinePercent
+
     var body: some View {
-        NavigationView {
-            RunGymView()
-                .navigationBarTitleDisplayMode(.inline)
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 16) {
+                    if let excess = viewModel.excessOverTargetKcal {
+                        RunExcessExerciseSection(
+                            excessKcal: excess,
+                            plan: viewModel.exercisePlan(
+                                gymWalkingSpeedKmh: gymWalkingSpeedKmh,
+                                gymWalkingInclinePercent: gymWalkingInclinePercent
+                            ),
+                            needsWeightForEstimate: viewModel.dailyBalance.weightKg == nil
+                                || (viewModel.dailyBalance.weightKg ?? 0) <= 0,
+                            gymWalkingSpeedKmh: $gymWalkingSpeedKmh,
+                            gymWalkingInclinePercent: $gymWalkingInclinePercent
+                        )
+                    }
+
+                    RunGymView()
+                }
+                .padding(.bottom, 24)
+            }
+            .navigationTitle("Run")
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }
 
 #Preview {
-    RunView()
+    RunView(viewModel: RunViewModel())
+        .environmentObject(AuthManager.shared)
+        .environmentObject(RunCalorieReminderState())
 }
