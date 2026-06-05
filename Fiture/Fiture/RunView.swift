@@ -11,7 +11,6 @@ struct RunView: View {
     var body: some View {
         NavigationView {
             RunGymView()
-                .navigationTitle("Run")
                 .navigationBarTitleDisplayMode(.inline)
         }
     }
