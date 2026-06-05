@@ -27,9 +27,12 @@ struct RootView: View {
             if fitnessProfileCompleted {
                 mainTabView
             } else {
-                TargetSettingView(allowsManualDismiss: false) {
-                    fitnessProfileCompleted = true
-                }
+                TargetSettingView(
+                    screenTitle: "基本情報",
+                    onCompleted: {
+                        fitnessProfileCompleted = true
+                    }
+                )
                 .environmentObject(authManager)
             }
         }
