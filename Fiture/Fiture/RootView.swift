@@ -43,13 +43,6 @@ struct RootView: View {
                     Text("Run")
                 }
             
-            ProgressView()
-                .environmentObject(authManager)
-                .tabItem {
-                    Image(systemName: "chart.bar.fill")
-                    Text("記録")
-                }
-            
             UserView()
                 .environmentObject(authManager)
                 .tabItem {

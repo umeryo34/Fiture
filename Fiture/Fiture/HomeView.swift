@@ -42,7 +42,7 @@ struct HomeView: View {
     private func refreshWeightDataOnly() async {
         guard let userId = authManager.currentUser?.id else { return }
         try? await weightTargetManager.fetchWeightEntry(userId: userId, date: Date())
-        try? await weightTargetManager.fetchWeightEntries(userId: userId, days: 30)
+        try? await weightTargetManager.fetchWeightEntries(userId: userId, days: 7)
         await MainActor.run {
             hasTodayWeight = weightTargetManager.weightEntry != nil
         }
@@ -51,7 +51,7 @@ struct HomeView: View {
     private func refreshChartData() async {
         guard let userId = authManager.currentUser?.id else { return }
 
-        async let fetchWeightEntries = weightTargetManager.fetchWeightEntries(userId: userId, days: 30)
+        async let fetchWeightEntries = weightTargetManager.fetchWeightEntries(userId: userId, days: 7)
         async let fetchTodayWeight = weightTargetManager.fetchWeightEntry(userId: userId, date: Date())
         async let fetchCalories = caloriesTargetManager.fetchCaloriesHistory(userId: userId, days: 30)
 
@@ -79,15 +79,8 @@ private struct HomeViewContent: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    calendarLink
-                        .padding(.horizontal, 20)
-                        .padding(.top, 20)
-                        .padding(.bottom, 8)
-
-                    Spacer()
-                        .frame(height: 20)
-
                     calorieSummarySection
+                        .padding(.top, 20)
                         .padding(.bottom, 10)
 
                     CalorieBalanceCard(viewModel: viewModel)
@@ -107,7 +100,7 @@ private struct HomeViewContent: View {
                 CaloriesProgressInputView(
                     caloriesTargetManager: viewModel.getCaloriesTargetManager(),
                     userId: userId,
-                    date: viewModel.selectedDate
+                    date: Date()
                 )
             }
         }
@@ -125,50 +118,18 @@ private struct HomeViewContent: View {
                 }
         }
         .task {
-            // 初回表示時にデータを取得
-            viewModel.selectedDate = Date()
             await viewModel.fetchCaloriesData()
         }
         .onReceive(NotificationCenter.default.publisher(for: .caloriesDataDidUpdate)) { _ in
-            // カロリーデータが更新された時に再取得（選択された日付のデータ）
             Task {
-                await viewModel.fetchCaloriesDataForDate(viewModel.selectedDate)
+                await viewModel.fetchCaloriesData()
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .runRecordDidSave)) { _ in
             Task {
-                await viewModel.fetchCaloriesDataForDate(viewModel.selectedDate)
+                await viewModel.fetchCaloriesData()
             }
         }
-    }
-
-    private var calendarLink: some View {
-        NavigationLink {
-            CalendarView(selectedDate: $viewModel.selectedDate) { newDate in
-                viewModel.selectedDate = newDate
-                Task {
-                    await viewModel.fetchCaloriesDataForDate(newDate)
-                }
-            }
-        } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "calendar")
-                    .font(.system(size: 16, weight: .semibold))
-                Text("カレンダーに移動")
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .semibold))
-            }
-            .foregroundColor(.black)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 11)
-            .background(Color(.systemGray6))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-        }
-        .buttonStyle(.plain)
     }
 
     @ViewBuilder

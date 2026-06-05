@@ -9,27 +9,52 @@ import SwiftUI
 
 struct WeightChartView: View {
     let weightEntries: [WeightEntry]
-    
-    private var chartData: [(date: Date, weight: Double)] {
-        weightEntries.map { ($0.date, $0.weight) }
-    }
-    
-    private var minWeight: Double {
-        guard !chartData.isEmpty else { return 0 }
-        return chartData.map { $0.weight }.min() ?? 0
-    }
-    
-    private var maxWeight: Double {
-        guard !chartData.isEmpty else { return 0 }
-        return chartData.map { $0.weight }.max() ?? 0
+
+    private static let windowDayCount = 7
+
+    /// 左端＝6日前 … 右端＝今日（毎日シフトする固定7日枠）
+    private var rollingWindowDays: [Date] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        return (0..<Self.windowDayCount).compactMap { index in
+            let dayOffset = index - (Self.windowDayCount - 1)
+            return calendar.date(byAdding: .day, value: dayOffset, to: today)
+        }
     }
 
-    /// 縦軸: 0.2kg 刻みを基本にし、メモリ本数が多すぎるときだけ 0.4, 0.6 … に広げる
+    private var weightByDay: [Date: Double] {
+        let calendar = Calendar.current
+        var map: [Date: Double] = [:]
+        for entry in weightEntries {
+            map[calendar.startOfDay(for: entry.date)] = entry.weight
+        }
+        return map
+    }
+
+    private var plottedPoints: [(slotIndex: Int, date: Date, weight: Double)] {
+        rollingWindowDays.enumerated().compactMap { index, day in
+            guard let weight = weightByDay[day] else { return nil }
+            return (slotIndex: index, date: day, weight: weight)
+        }
+    }
+
+    private var hasAnyWeightInWindow: Bool {
+        !plottedPoints.isEmpty
+    }
+
+    private var minWeight: Double {
+        plottedPoints.map(\.weight).min() ?? 0
+    }
+
+    private var maxWeight: Double {
+        plottedPoints.map(\.weight).max() ?? 0
+    }
+
     private static let yAxisPreferredStep: Double = 0.2
     private static let yAxisMaxTicks: Int = 11
 
     private var yAxisLayout: (minY: Double, maxY: Double, step: Double, ticksDescending: [Double]) {
-        guard !chartData.isEmpty else {
+        guard hasAnyWeightInWindow else {
             return (0, 0.2, 0.2, [0.2, 0])
         }
         let pad = Self.yAxisPreferredStep
@@ -64,7 +89,7 @@ struct WeightChartView: View {
         var ascending: [Double] = []
         var v = lo
         while v <= hi + 1e-9 {
-            ascending.append((v * 500).rounded() / 500) // 0.2 刻みの丸め誤差抑制
+            ascending.append((v * 500).rounded() / 500)
             v += step
         }
         return (lo, hi, step, Array(ascending.reversed()))
@@ -75,38 +100,14 @@ struct WeightChartView: View {
         let r = y.maxY - y.minY
         return r > 1e-9 ? r : Self.yAxisPreferredStep
     }
-    
-    // 表示する日付のインデックスを計算（適切に間引く）
-    private var visibleDateIndices: [Int] {
-        guard chartData.count > 1 else {
-            return chartData.isEmpty ? [] : [0]
-        }
-        
-        let maxLabels = 7 // 最大表示ラベル数
-        if chartData.count <= maxLabels {
-            return Array(0..<chartData.count)
-        }
-        
-        // 均等に間引く
-        let step = Double(chartData.count - 1) / Double(maxLabels - 1)
-        var indices: [Int] = []
-        for i in 0..<maxLabels {
-            let index = Int(round(step * Double(i)))
-            if !indices.contains(index) {
-                indices.append(index)
-            }
-        }
-        
-        // 最後のインデックスを必ず含める
-        if indices.last != chartData.count - 1 {
-            indices.append(chartData.count - 1)
-        }
-        
-        return indices
+
+    private func xPosition(forSlotIndex index: Int, width: CGFloat) -> CGFloat {
+        guard Self.windowDayCount > 1 else { return width / 2 }
+        return width * CGFloat(index) / CGFloat(Self.windowDayCount - 1)
     }
-    
+
     var body: some View {
-        if weightEntries.isEmpty {
+        if !hasAnyWeightInWindow {
             VStack(spacing: 12) {
                 Text("体重データがありません")
                     .font(.subheadline)
@@ -125,7 +126,6 @@ struct WeightChartView: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .top, spacing: 8) {
-                    // 縦軸（0.2kg 基準のメモリ）
                     GeometryReader { labelGeo in
                         let h = labelGeo.size.height
                         let n = yTicks.count
@@ -141,15 +141,13 @@ struct WeightChartView: View {
                     }
                     .frame(width: 36, height: 200)
                     .padding(.trailing, 4)
-                    
-                    // グラフ本体
+
                     VStack(spacing: 0) {
                         GeometryReader { geometry in
                             let h = geometry.size.height
                             let w = geometry.size.width
                             let tickCount = yTicks.count
                             ZStack {
-                                // 背景グリッド（横線＝メモリ位置に一致）
                                 Path { path in
                                     guard tickCount > 0 else { return }
                                     if tickCount == 1 {
@@ -165,74 +163,55 @@ struct WeightChartView: View {
                                     }
                                 }
                                 .stroke(Color.gray.opacity(0.25), lineWidth: 1)
-                                
-                                // 折れ線グラフ
-                                if chartData.count > 1 {
+
+                                if plottedPoints.count > 1 {
                                     Path { path in
-                                        for (index, data) in chartData.enumerated() {
-                                            let x = w * CGFloat(index) / CGFloat(chartData.count - 1)
-                                            let normalized = (data.weight - yMin) / yRange
+                                        var started = false
+                                        for point in plottedPoints {
+                                            let x = xPosition(forSlotIndex: point.slotIndex, width: w)
+                                            let normalized = (point.weight - yMin) / yRange
                                             let y = h * (1 - CGFloat(normalized))
-                                            
-                                            if index == 0 {
+                                            if !started {
                                                 path.move(to: CGPoint(x: x, y: y))
+                                                started = true
                                             } else {
                                                 path.addLine(to: CGPoint(x: x, y: y))
                                             }
                                         }
                                     }
                                     .stroke(Color.red, lineWidth: 3)
-                                    
-                                    // データポイント
-                                    ForEach(Array(chartData.enumerated()), id: \.offset) { index, data in
-                                        let x = w * CGFloat(index) / CGFloat(chartData.count - 1)
-                                        let normalized = (data.weight - yMin) / yRange
-                                        let y = h * (1 - CGFloat(normalized))
-                                        
-                                        Circle()
-                                            .fill(Color.red)
-                                            .frame(width: 8, height: 8)
-                                            .position(x: x, y: y)
-                                    }
-                                } else if chartData.count == 1 {
-                                    let normalized = (chartData[0].weight - yMin) / yRange
+                                }
+
+                                ForEach(plottedPoints, id: \.slotIndex) { point in
+                                    let x = xPosition(forSlotIndex: point.slotIndex, width: w)
+                                    let normalized = (point.weight - yMin) / yRange
                                     let y = h * (1 - CGFloat(normalized))
-                                    
+
                                     Circle()
                                         .fill(Color.red)
                                         .frame(width: 8, height: 8)
-                                        .position(x: w / 2, y: y)
+                                        .position(x: x, y: y)
                                 }
                             }
                         }
                         .frame(height: 200)
-                        
-                        // 横軸（日付）
-                        if chartData.count > 1 {
-                            GeometryReader { dateGeometry in
-                                ZStack {
-                                    ForEach(visibleDateIndices, id: \.self) { index in
-                                        let data = chartData[index]
-                                        // グラフ上の実際のX位置を計算（データポイントの位置と一致させる）
-                                        let xPosition = dateGeometry.size.width * CGFloat(index) / CGFloat(chartData.count - 1)
-                                        
-                                        Text(formatDateShort(data.date))
-                                            .font(.system(size: 11, weight: .medium))
-                                            .foregroundColor(.primary)
-                                            .position(x: xPosition, y: 15)
-                                    }
+
+                        GeometryReader { dateGeometry in
+                            let w = dateGeometry.size.width
+                            ZStack {
+                                ForEach(Array(rollingWindowDays.enumerated()), id: \.offset) { index, day in
+                                    Text(formatDateShort(day))
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundColor(.primary)
+                                        .position(
+                                            x: xPosition(forSlotIndex: index, width: w),
+                                            y: 15
+                                        )
                                 }
                             }
-                            .frame(height: 30)
-                            .padding(.top, 8)
-                        } else if chartData.count == 1 {
-                            Text(formatDateShort(chartData[0].date))
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundColor(.primary)
-                                .frame(height: 30)
-                                .frame(maxWidth: .infinity)
-                                .padding(.top, 8)
                         }
+                        .frame(height: 30)
+                        .padding(.top, 8)
                     }
                 }
                 .padding(.horizontal, 16)
@@ -240,8 +219,7 @@ struct WeightChartView: View {
             .padding(.top, 8)
         }
     }
-    
-    // 日付を短い形式でフォーマット（M/d）
+
     private func formatDateShort(_ date: Date) -> String {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "M/d"
@@ -258,6 +236,3 @@ struct WeightChartView: View {
     ])
     .padding()
 }
-
-
-

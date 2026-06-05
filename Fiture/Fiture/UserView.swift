@@ -10,66 +10,15 @@ import SwiftUI
 struct UserView: View {
     @EnvironmentObject var authManager: AuthManager
     @State private var showingEditProfile = false
-    @State private var showingThemeSetting = false
     @State private var showingFitnessProfile = false
     
     var body: some View {
         NavigationView {
-            ScrollView {
-                VStack(spacing: 30) {
-                    VStack(spacing: 0) {
-                        SettingRow(icon: "person.circle", title: "プロフィール編集", color: .blue) {
-                            showingEditProfile = true
-                        }
-                        
-                        SettingRow(icon: "target", title: "目標を変更", color: .red) {
-                            showingFitnessProfile = true
-                        }
-                        
-                        SettingRow(icon: "bell.fill", title: "通知設定", color: .orange) {
-                        }
-                        
-                        SettingRow(icon: "lock.fill", title: "プライバシー", color: .green) {
-                        }
-                        
-                        SettingRow(icon: "paintbrush.fill", title: "テーマ", color: .purple) {
-                            showingThemeSetting = true
-                        }
-                        
-                        SettingRow(icon: "info.circle", title: "アプリ情報", color: .gray) {
-                        }
-                        
-                        SettingRow(icon: "questionmark.circle", title: "ヘルプ", color: .cyan) {
-                        }
-                    }
-                    .background(
-                        RoundedRectangle(cornerRadius: 15)
-                            .fill(Color(.systemGray6))
-                    )
-                    .padding(.horizontal, 20)
-                    
-                    // ログアウトボタン
-                    Button(action: {
-                        AuthManager.shared.signOut()
-                    }) {
-                        HStack {
-                            Image(systemName: "rectangle.portrait.and.arrow.right")
-                                .font(.system(size: 18))
-                            Text("ログアウト")
-                                .font(.body)
-                                .fontWeight(.medium)
-                        }
-                        .foregroundColor(.red)
+            GeometryReader { geometry in
+                ScrollView {
+                    settingsList
+                        .frame(minHeight: geometry.size.height, alignment: .center)
                         .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.red, lineWidth: 1)
-                        )
-                    }
-                    .padding(.horizontal, 20)
-                    
-                    Spacer(minLength: 50)
                 }
             }
             .navigationBarTitleDisplayMode(.large)
@@ -78,13 +27,39 @@ struct UserView: View {
             EditProfileView()
                 .environmentObject(authManager)
         }
-        .sheet(isPresented: $showingThemeSetting) {
-            ThemeSettingView()
-        }
         .sheet(isPresented: $showingFitnessProfile) {
             FitnessProfileGoalSettingView()
                 .environmentObject(authManager)
         }
+    }
+
+    private var settingsList: some View {
+        VStack(spacing: 0) {
+            SettingRow(icon: "person.circle", title: "プロフィール編集", color: .blue) {
+                showingEditProfile = true
+            }
+
+            SettingRow(icon: "target", title: "目標を変更", color: .red) {
+                showingFitnessProfile = true
+            }
+
+            SettingRow(icon: "bell.fill", title: "通知設定", color: .orange) {
+            }
+
+            SettingRow(icon: "lock.fill", title: "プライバシー", color: .green) {
+            }
+
+            SettingRow(icon: "info.circle", title: "アプリ情報", color: .gray) {
+            }
+
+            SettingRow(icon: "questionmark.circle", title: "ヘルプ", color: .cyan) {
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 15)
+                .fill(Color(.systemGray6))
+        )
+        .padding(.horizontal, 20)
     }
 }
 
