@@ -2,8 +2,7 @@
 //  FitnessProfileGoalSettingView.swift
 //  Fiture
 //
-//  設定から開く「目標を変更」用。シート内は単一の NavigationStack に載せ、
-//  ウィザード本体は二重ナビを避けるため外部ナビモードで表示する。
+//  設定から開く「目標を変更」用（UserView と同じ NavigationView スタイル）
 //
 
 import SwiftUI
@@ -13,25 +12,13 @@ struct FitnessProfileGoalSettingView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
-            TargetSettingView(
-                allowsManualDismiss: false,
-                usesExternalNavigationStack: true,
-                onCompleted: {
-                    dismiss()
-                }
-            )
-            .environmentObject(authManager)
-            .navigationTitle("目標を変更")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("閉じる") {
-                        dismiss()
-                    }
-                }
+        TargetSettingView(
+            screenTitle: "目標を変更",
+            onCompleted: {
+                dismiss()
             }
-        }
+        )
+        .environmentObject(authManager)
     }
 }
 
