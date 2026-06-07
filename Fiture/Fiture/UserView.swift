@@ -10,6 +10,8 @@ import SwiftUI
 struct UserView: View {
     @EnvironmentObject var authManager: AuthManager
     @State private var showingFitnessProfile = false
+    @State private var showingNotificationComingSoon = false
+    @State private var showingPrivacyPolicy = false
 
     var body: some View {
         NavigationView {
@@ -26,6 +28,12 @@ struct UserView: View {
             FitnessProfileGoalSettingView()
                 .environmentObject(authManager)
         }
+        .sheet(isPresented: $showingNotificationComingSoon) {
+            ComingSoonView(title: "通知設定", systemImage: "bell.fill")
+        }
+        .sheet(isPresented: $showingPrivacyPolicy) {
+            PrivacyPolicyView()
+        }
     }
 
     private var settingsList: some View {
@@ -34,10 +42,17 @@ struct UserView: View {
                 showingFitnessProfile = true
             }
 
-            SettingRow(icon: "bell.fill", title: "通知設定", color: .orange) {
+            SettingRow(
+                icon: "bell.fill",
+                title: "通知設定",
+                color: .orange,
+                badge: "Coming Soon"
+            ) {
+                showingNotificationComingSoon = true
             }
 
             SettingRow(icon: "lock.fill", title: "プライバシー", color: .green) {
+                showingPrivacyPolicy = true
             }
 
             SettingRow(icon: "info.circle", title: "アプリ情報", color: .gray) {
@@ -58,6 +73,7 @@ struct SettingRow: View {
     let icon: String
     let title: String
     let color: Color
+    var badge: String? = nil
     let action: () -> Void
 
     var body: some View {
@@ -71,6 +87,17 @@ struct SettingRow: View {
                 Text(title)
                     .font(.body)
                     .foregroundColor(.primary)
+
+                if let badge {
+                    Text(badge)
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.orange)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Color.orange.opacity(0.12))
+                        .clipShape(Capsule())
+                }
 
                 Spacer()
 
