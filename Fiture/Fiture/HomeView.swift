@@ -89,7 +89,8 @@ private struct HomeViewContent: View {
     let caloriesHistory: [(date: Date, totalCalories: Double)]
     let hasTodayWeight: Bool
     @State private var showingWeightSetting = false
-    
+    @State private var showingCaloriesDetail = false
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -132,6 +133,15 @@ private struct HomeViewContent: View {
                     weightTargetManager.selectedDate = Date()
                 }
         }
+        .sheet(isPresented: $showingCaloriesDetail) {
+            if let userId = authManager.currentUser?.id {
+                CaloriesDayDetailView(
+                    caloriesTargetManager: viewModel.getCaloriesTargetManager(),
+                    userId: userId,
+                    date: Date()
+                )
+            }
+        }
         .task {
             await viewModel.fetchCaloriesData()
             syncRunTabReminder()
@@ -156,12 +166,10 @@ private struct HomeViewContent: View {
 
     @ViewBuilder
     private var calorieSummarySection: some View {
-        if let target = viewModel.targetCalories, target > 0 {
-            VStack(spacing: 8) {
-                Text("\(String(format: "%.0f", viewModel.totalCalories)) / \(String(format: "%.0f", target)) kcal")
-                    .font(.system(size: 32, weight: .bold))
-                    .foregroundColor(viewModel.totalCalories > target ? .red : .black)
+        VStack(alignment: .center, spacing: 8) {
+            calorieSummaryText
 
+            if let target = viewModel.targetCalories, target > 0 {
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
                         Rectangle()
@@ -184,13 +192,40 @@ private struct HomeViewContent: View {
                 .frame(height: 8)
                 .frame(maxWidth: .infinity)
             }
-            .padding(.horizontal, 20)
+
+            caloriesDetailButton
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 20)
+    }
+
+    @ViewBuilder
+    private var calorieSummaryText: some View {
+        if let target = viewModel.targetCalories, target > 0 {
+            Text("\(String(format: "%.0f", viewModel.totalCalories)) / \(String(format: "%.0f", target)) kcal")
+                .font(.system(size: 32, weight: .bold))
+                .foregroundColor(viewModel.totalCalories > target ? .red : .black)
+                .multilineTextAlignment(.center)
         } else {
             Text("\(String(format: "%.0f", viewModel.totalCalories)) kcal")
                 .font(.system(size: 32, weight: .bold))
                 .foregroundColor(.black)
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, 20)
+                .multilineTextAlignment(.center)
+        }
+    }
+
+    private var caloriesDetailButton: some View {
+        Button {
+            showingCaloriesDetail = true
+        } label: {
+            Text("詳細")
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundColor(.red)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color.red.opacity(0.1))
+                .clipShape(Capsule())
         }
     }
 

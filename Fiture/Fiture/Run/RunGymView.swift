@@ -37,10 +37,6 @@ struct RunGymView: View {
     var body: some View {
         VStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 12) {
-                Text("at Gym")
-                    .font(.title2)
-                    .fontWeight(.bold)
-
                 Picker("種目", selection: $motion) {
                     ForEach(MotionType.allCases) { m in
                         Text(m.rawValue).tag(m)

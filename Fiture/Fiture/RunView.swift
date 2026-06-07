@@ -33,10 +33,10 @@ struct RunView: View {
 
                     RunGymView()
                 }
+                .padding(.top, 20)
                 .padding(.bottom, 24)
             }
-            .navigationTitle("Run")
-            .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
 }
