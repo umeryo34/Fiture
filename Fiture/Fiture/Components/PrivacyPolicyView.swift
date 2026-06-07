@@ -4,14 +4,13 @@
 //
 
 import SwiftUI
-import WebKit
 
 struct PrivacyPolicyView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
-            PrivacyPolicyWebView(html: Self.privacyPolicyHTML)
+            HTMLWebView(html: Self.privacyPolicyHTML)
                 .navigationTitle("プライバシー")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -147,20 +146,4 @@ struct PrivacyPolicyView: View {
     </body>
     </html>
     """
-}
-
-private struct PrivacyPolicyWebView: UIViewRepresentable {
-    let html: String
-
-    func makeUIView(context: Context) -> WKWebView {
-        let webView = WKWebView()
-        webView.isOpaque = false
-        webView.backgroundColor = .clear
-        webView.scrollView.backgroundColor = .clear
-        return webView
-    }
-
-    func updateUIView(_ webView: WKWebView, context: Context) {
-        webView.loadHTMLString(html, baseURL: nil)
-    }
 }

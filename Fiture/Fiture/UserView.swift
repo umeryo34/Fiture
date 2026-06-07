@@ -12,6 +12,8 @@ struct UserView: View {
     @State private var showingFitnessProfile = false
     @State private var showingNotificationComingSoon = false
     @State private var showingPrivacyPolicy = false
+    @State private var showingAppInfo = false
+    @State private var showingHelp = false
 
     var body: some View {
         NavigationView {
@@ -33,6 +35,12 @@ struct UserView: View {
         }
         .sheet(isPresented: $showingPrivacyPolicy) {
             PrivacyPolicyView()
+        }
+        .sheet(isPresented: $showingAppInfo) {
+            AppInfoView()
+        }
+        .sheet(isPresented: $showingHelp) {
+            HelpView()
         }
     }
 
@@ -56,9 +64,11 @@ struct UserView: View {
             }
 
             SettingRow(icon: "info.circle", title: "アプリ情報", color: .gray) {
+                showingAppInfo = true
             }
 
             SettingRow(icon: "questionmark.circle", title: "ヘルプ", color: .cyan) {
+                showingHelp = true
             }
         }
         .background(

@@ -21,11 +21,6 @@ struct CaloriesChartView: View {
         chartData.map { CaloriesChartData(date: $0.date, totalCalories: $0.totalCalories) }
     }
     
-    private var maxCalories: Double {
-        guard !caloriesData.isEmpty else { return 2000 }
-        return max(caloriesData.map { $0.totalCalories }.max() ?? 2000, 2000)
-    }
-    
     var body: some View {
         if chartData.isEmpty {
             VStack(spacing: 12) {
@@ -46,11 +41,7 @@ struct CaloriesChartView: View {
                         x: .value("日付", data.date, unit: .day),
                         y: .value("カロリー", data.totalCalories)
                     )
-                    .foregroundStyle(
-                        data.totalCalories >= 2000 ? Color.red :
-                        data.totalCalories >= 1500 ? Color.orange :
-                        Color.green
-                    )
+                    .foregroundStyle(Color.red)
                     .cornerRadius(4)
                 }
                 .chartXAxis {
@@ -74,37 +65,8 @@ struct CaloriesChartView: View {
                 .frame(height: 200)
                 .padding(.horizontal, 10)
                 
-                // 凡例
-                HStack(spacing: 20) {
-                    HStack(spacing: 4) {
-                        Rectangle()
-                            .fill(Color.green)
-                            .frame(width: 12, height: 12)
-                        Text("1500kcal未満")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    HStack(spacing: 4) {
-                        Rectangle()
-                            .fill(Color.orange)
-                            .frame(width: 12, height: 12)
-                        Text("1500-2000kcal")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    HStack(spacing: 4) {
-                        Rectangle()
-                            .fill(Color.red)
-                            .frame(width: 12, height: 12)
-                        Text("2000kcal以上")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    
+                HStack {
                     Spacer()
-                    
                     Text("\(chartData.count)日分")
                         .font(.caption)
                         .foregroundColor(.secondary)
