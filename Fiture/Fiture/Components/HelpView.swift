@@ -7,6 +7,7 @@ import SwiftUI
 
 struct HelpView: View {
     @Environment(\.dismiss) private var dismiss
+    @State private var showingHealthSources = false
 
     private let supportEmail = "fiture.support@gmail.com"
 
@@ -36,6 +37,34 @@ struct HelpView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("カロリー目標や運動時間の目安は、栄養・運動科学の公開文献に基づく推定値です。医療アドバイスではありません。")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Button {
+                            showingHealthSources = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "book.closed")
+                                Text("健康情報の出典・参考文献")
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                            }
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.blue)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.vertical, 4)
+                } header: {
+                    Text("健康情報について")
+                }
+
                 Section {
                     helpBullet(
                         title: "はじめかた",
@@ -123,6 +152,9 @@ struct HelpView: View {
                         dismiss()
                     }
                 }
+            }
+            .sheet(isPresented: $showingHealthSources) {
+                HealthInformationSourcesView()
             }
         }
     }

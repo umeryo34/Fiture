@@ -9,6 +9,7 @@ struct AppInfoView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showingPrivacyPolicy = false
     @State private var showingTermsOfService = false
+    @State private var showingHealthSources = false
 
     private let supportEmail = "fiture.support@gmail.com"
 
@@ -60,6 +61,19 @@ struct AppInfoView: View {
 
                 Section {
                     Button {
+                        showingHealthSources = true
+                    } label: {
+                        HStack {
+                            Text("健康情報の出典")
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    Button {
                         showingPrivacyPolicy = true
                     } label: {
                         HStack {
@@ -102,6 +116,9 @@ struct AppInfoView: View {
             }
             .sheet(isPresented: $showingTermsOfService) {
                 TermsOfServiceView()
+            }
+            .sheet(isPresented: $showingHealthSources) {
+                HealthInformationSourcesView()
             }
         }
     }

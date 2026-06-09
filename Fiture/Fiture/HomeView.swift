@@ -326,6 +326,8 @@ private struct CalorieBalanceCard: View {
                         .fontWeight(.semibold)
                         .foregroundColor(margin >= 0 ? .black : .red)
                 }
+
+                HealthSourcesLink(label: "1日の目標カロリーの出典を見る")
             }
 
             if viewModel.excessCaloriesOverTarget != nil {

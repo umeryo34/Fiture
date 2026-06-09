@@ -178,9 +178,12 @@ struct TargetSettingView: View {
             }
 
             if let bmr = estimatedProfileWithPickers.bmr {
-                Text("推定BMR: \(Int(bmr.rounded())) kcal")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("推定BMR: \(Int(bmr.rounded())) kcal")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    HealthSourcesLink(label: "BMR・TDEEの出典を見る")
+                }
             }
 
         case .bodyGoal:
@@ -437,6 +440,9 @@ struct TargetSettingView: View {
                 Text("タンパク質の目安: 約 \(Int(r.suggestedProteinGramsPerDay.rounded())) g / 日（体重×1.8）")
                     .font(.caption)
                     .foregroundColor(.secondary)
+
+                HealthSourcesLink(label: "カロリー目標の出典・根拠を見る")
+                    .padding(.top, 4)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(14)

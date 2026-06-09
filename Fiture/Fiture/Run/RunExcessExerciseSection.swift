@@ -25,6 +25,8 @@ struct RunExcessExerciseSection: View {
                 .foregroundColor(.black.opacity(0.6))
                 .fixedSize(horizontal: false, vertical: true)
 
+            HealthSourcesLink(label: "運動時間の目安の出典を見る")
+
             if let plan {
                 HStack(spacing: 16) {
                     quickEstimate(label: "ジム", estimate: plan.gymWalking)

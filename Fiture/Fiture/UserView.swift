@@ -14,6 +14,7 @@ struct UserView: View {
     @State private var showingPrivacyPolicy = false
     @State private var showingAppInfo = false
     @State private var showingHelp = false
+    @State private var showingHealthSources = false
 
     var body: some View {
         NavigationView {
@@ -42,6 +43,9 @@ struct UserView: View {
         .sheet(isPresented: $showingHelp) {
             HelpView()
         }
+        .sheet(isPresented: $showingHealthSources) {
+            HealthInformationSourcesView()
+        }
     }
 
     private var settingsList: some View {
@@ -65,6 +69,10 @@ struct UserView: View {
 
             SettingRow(icon: "info.circle", title: "アプリ情報", color: .gray) {
                 showingAppInfo = true
+            }
+
+            SettingRow(icon: "book.closed", title: "健康情報の出典", color: .blue) {
+                showingHealthSources = true
             }
 
             SettingRow(icon: "questionmark.circle", title: "ヘルプ", color: .cyan) {
