@@ -30,7 +30,7 @@ class CaloriesTargetManager: ObservableObject {
     }
     
     // 食事を追加
-    func addCaloriesEntry(userId: UUID, foodName: String, calories: Double, protein: Double? = nil, fat: Double? = nil, carbs: Double? = nil, date: Date = Date()) async throws {
+    func addCaloriesEntry(userId: UUID, foodName: String, calories: Double, protein: Double? = nil, fat: Double? = nil, carbs: Double? = nil, mealType: MealType? = nil, date: Date = Date()) async throws {
         _ = LocalDataStore.shared.addCaloriesEntry(
             userId: userId,
             date: date,
@@ -38,7 +38,8 @@ class CaloriesTargetManager: ObservableObject {
             calories: calories,
             protein: protein,
             fat: fat,
-            carbs: carbs
+            carbs: carbs,
+            mealType: mealType
         )
         
         // 再取得

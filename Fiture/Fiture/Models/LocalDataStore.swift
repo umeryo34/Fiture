@@ -332,7 +332,8 @@ final class LocalDataStore {
                 protein: entry.protein,
                 fat: entry.fat,
                 carbs: entry.carbs,
-                createdAt: entry.createdAt
+                createdAt: entry.createdAt,
+                mealType: entry.mealType
             )
         }
 
@@ -371,7 +372,7 @@ final class LocalDataStore {
             .map { $0.toDomain() }
     }
 
-    func addCaloriesEntry(userId: UUID, date: Date, foodName: String, calories: Double, protein: Double?, fat: Double?, carbs: Double?) -> CaloriesEntry {
+    func addCaloriesEntry(userId: UUID, date: Date, foodName: String, calories: Double, protein: Double?, fat: Double?, carbs: Double?, mealType: MealType? = nil) -> CaloriesEntry {
         var state = loadState()
         state.nextCaloriesEntryId += 1
         let value = LocalCaloriesEntry(
@@ -383,7 +384,8 @@ final class LocalDataStore {
             protein: protein,
             fat: fat,
             carbs: carbs,
-            createdAt: Date()
+            createdAt: Date(),
+            mealType: mealType
         )
         state.caloriesEntries.append(value)
         saveState(state)
@@ -653,9 +655,11 @@ private struct LocalCaloriesEntry: Codable {
     let fat: Double?
     let carbs: Double?
     let createdAt: Date
+    /// 以前の保存データには無いため省略可
+    var mealType: MealType? = nil
 
     func toDomain() -> CaloriesEntry {
-        CaloriesEntry(id: id, userId: userId, date: date, foodName: foodName, calories: calories, protein: protein, fat: fat, carbs: carbs, createdAt: createdAt)
+        CaloriesEntry(id: id, userId: userId, date: date, foodName: foodName, calories: calories, protein: protein, fat: fat, carbs: carbs, createdAt: createdAt, mealType: mealType)
     }
 }
 

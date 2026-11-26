@@ -11,6 +11,9 @@ struct RunGymView: View {
     }
 
     @Environment(\.dismiss) private var dismiss
+    let mood: CharacterMood
+    /// 計測中、または中断中か
+    @Binding var isSessionActive: Bool
 
     @State private var motion: MotionType = .running
     @State private var inclinePercent: Double = 0
@@ -34,8 +37,23 @@ struct RunGymView: View {
         return speedKmPerHour * (elapsedTime / 3600.0)
     }
 
+    private var hasSession: Bool {
+        isRunning || elapsedTime > 0
+    }
+
     var body: some View {
         VStack(spacing: 16) {
+            if hasSession {
+                RunCharacterScene(
+                    mood: mood,
+                    motion: motion,
+                    speedKmPerHour: speedKmPerHour,
+                    isMoving: isRunning
+                )
+                .padding(.horizontal, 16)
+                .transition(.opacity)
+            }
+
             VStack(alignment: .leading, spacing: 12) {
                 Picker("種目", selection: $motion) {
                     ForEach(MotionType.allCases) { m in
@@ -74,23 +92,23 @@ struct RunGymView: View {
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            .cuteCard()
             .padding(.horizontal, 16)
-            .padding(.top, 8)
 
             VStack(spacing: 15) {
                 HStack(spacing: 40) {
                     VStack {
                         Text(String(format: "%.2f", isRunning ? currentDistanceKm : totalDistanceKm))
-                            .font(.system(size: 28, weight: .bold))
-                            .foregroundColor(.red)
+                            .font(FitureTheme.rounded(30, .heavy))
+                            .foregroundColor(FitureTheme.coral)
                         Text("km")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                     VStack {
                         Text(formatTime(elapsedTime))
-                            .font(.system(size: 28, weight: .bold))
-                            .foregroundColor(.red)
+                            .font(FitureTheme.rounded(30, .heavy))
+                            .foregroundColor(FitureTheme.coral)
                         Text("時間")
                             .font(.caption)
                             .foregroundColor(.secondary)
@@ -109,8 +127,8 @@ struct RunGymView: View {
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(Color.orange)
-                            .cornerRadius(12)
+                            .background(FitureTheme.halo)
+                            .clipShape(Capsule())
                         }
 
                         Button(action: endGym) {
@@ -123,8 +141,8 @@ struct RunGymView: View {
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(Color.red)
-                            .cornerRadius(12)
+                            .background(FitureTheme.coral)
+                            .clipShape(Capsule())
                         }
                     }
                 } else {
@@ -138,13 +156,20 @@ struct RunGymView: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.red)
-                        .cornerRadius(12)
+                        .background(FitureTheme.coral)
+                        .clipShape(Capsule())
                     }
                 }
             }
+            .cuteCard()
             .padding(.horizontal, 16)
             .padding(.bottom, 30)
+        }
+        .animation(.easeInOut(duration: 0.3), value: hasSession)
+        .onChange(of: hasSession) { _, active in
+            withAnimation(.easeInOut(duration: 0.3)) {
+                isSessionActive = active
+            }
         }
         .task {
             try? await HealthKitCalorieService.shared.requestAuthorization()

@@ -78,6 +78,14 @@ enum HealthInformationSources {
             usedInApp: "目標設定のタンパク質目安"
         ),
         HealthInformationSource(
+            id: "pfc-balance",
+            category: .calorieTarget,
+            title: "PFCバランス — 日本人の食事摂取基準（2025年版）",
+            summary: "エネルギー産生栄養素バランスの目標量（たんぱく質13〜20%、脂質20〜30%、炭水化物50〜65%）の範囲内で、減量はP20%・F25%・C55%、現状維持はP15%・F25%・C60%、増量はP17%・F25%・C58%として、1日のカロリー目標から各栄養素のグラム数を計算しています（P・Cは1g=4kcal、Fは1g=9kcal）。",
+            url: URL(string: "https://www.mhlw.go.jp/stf/newpage_44138.html")!,
+            usedInApp: "Homeタブの「PFCバランス」の目安"
+        ),
+        HealthInformationSource(
             id: "acsm-treadmill",
             category: .exercise,
             title: "ACSM トレッドミル式（ウォーキング・ランニング）",

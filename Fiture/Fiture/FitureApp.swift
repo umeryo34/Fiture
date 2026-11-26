@@ -10,7 +10,12 @@ import SwiftUI
 @main
 struct FitureApp: App {
     @StateObject private var authManager = AuthManager.shared
-    
+
+    init() {
+        // ホームのキャラクターをすぐ出せるよう、起動直後に読み込み始める
+        CharacterLibrary.shared.preload()
+    }
+
     var body: some Scene {
         WindowGroup {
             Group {
