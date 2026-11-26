@@ -14,23 +14,36 @@ struct RunExcessExerciseSection: View {
     @State private var isExpanded = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("目標超過分を落とす目安")
-                .font(.headline)
-                .fontWeight(.bold)
-                .foregroundColor(.red)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                Image(CharacterMood.devil.imageName)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 72, height: 72)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("目標超過分を落とす目安")
+                        .font(FitureTheme.rounded(13, .heavy))
+                        .foregroundColor(FitureTheme.devil)
+                    Text("あと \(String(format: "%.0f", excessKcal)) kcal")
+                        .font(FitureTheme.rounded(26, .heavy))
+                        .foregroundColor(FitureTheme.ink)
+                    Text("動いて天使にもどろう！")
+                        .font(FitureTheme.rounded(13, .bold))
+                        .foregroundColor(FitureTheme.subInk)
+                }
+            }
 
-            Text("あと \(String(format: "%.0f", excessKcal)) kcal 分の運動が必要です（ACSM式・体重ベースの推定）。")
-                .font(.caption)
-                .foregroundColor(.black.opacity(0.6))
+            Text("運動時間はACSM式・体重ベースの推定です。")
+                .font(FitureTheme.rounded(11))
+                .foregroundColor(FitureTheme.subInk)
                 .fixedSize(horizontal: false, vertical: true)
 
             HealthSourcesLink(label: "運動時間の目安の出典を見る")
 
             if let plan {
-                HStack(spacing: 16) {
-                    quickEstimate(label: "ジム", estimate: plan.gymWalking)
-                    quickEstimate(label: "屋外", estimate: plan.outdoorRunning)
+                HStack(spacing: 10) {
+                    quickEstimate(label: "🏃 ジム", estimate: plan.gymWalking)
+                    quickEstimate(label: "🌳 屋外", estimate: plan.outdoorRunning)
                 }
 
                 Button {
@@ -45,7 +58,7 @@ struct RunExcessExerciseSection: View {
                         Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                             .font(.caption2)
                     }
-                    .foregroundColor(.black.opacity(0.55))
+                    .foregroundColor(FitureTheme.subInk)
                 }
                 .buttonStyle(.plain)
 
@@ -54,34 +67,27 @@ struct RunExcessExerciseSection: View {
                 }
             } else if needsWeightForEstimate {
                 Text("運動時間の目安には、プロフィールの体重登録が必要です。")
-                    .font(.caption)
-                    .foregroundColor(.red)
+                    .font(FitureTheme.rounded(12, .semibold))
+                    .foregroundColor(FitureTheme.devil)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.red.opacity(0.06))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.red.opacity(0.2), lineWidth: 1)
-                )
-        )
+        .cuteCard(fill: FitureTheme.devilLight)
         .padding(.horizontal, 16)
     }
 
     private func quickEstimate(label: String, estimate: ExerciseTimeEstimate) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label)
-                .font(.caption2)
-                .foregroundColor(.black.opacity(0.5))
+                .font(FitureTheme.rounded(12, .bold))
+                .foregroundColor(FitureTheme.subInk)
             Text("約 \(estimate.formattedDuration)")
-                .font(.subheadline)
-                .fontWeight(.bold)
-                .foregroundColor(.black)
+                .font(FitureTheme.rounded(18, .heavy))
+                .foregroundColor(FitureTheme.ink)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
     }
 
     @ViewBuilder
@@ -96,7 +102,7 @@ struct RunExcessExerciseSection: View {
                     .font(.caption)
             }
             Slider(value: $gymWalkingInclinePercent, in: 0...15, step: 1)
-                .tint(.red)
+                .tint(FitureTheme.coral)
 
             HStack {
                 Text("速度")
@@ -107,13 +113,10 @@ struct RunExcessExerciseSection: View {
                     .font(.caption)
             }
             Slider(value: $gymWalkingSpeedKmh, in: 3...8, step: 0.5)
-                .tint(.red)
+                .tint(FitureTheme.coral)
         }
-        .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color.black.opacity(0.03))
-        )
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
 
         detailCard(estimate: plan.gymWalking)
         detailCard(estimate: plan.outdoorRunning)
@@ -139,10 +142,7 @@ struct RunExcessExerciseSection: View {
                 .fontWeight(.bold)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color.black.opacity(0.04))
-        )
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white))
     }
 }

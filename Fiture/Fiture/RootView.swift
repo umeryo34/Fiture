@@ -11,7 +11,10 @@ struct RootView: View {
     @EnvironmentObject var authManager: AuthManager
     @StateObject private var runCalorieReminder = RunCalorieReminderState()
     @StateObject private var runTabViewModel = RunViewModel()
-    @State private var fitnessProfileCompleted = false
+    /// 起動時に初期設定画面が一瞬出ないよう、最初から保存済みの状態で始める
+    @State private var fitnessProfileCompleted = FitnessProfileStorage
+        .load(userId: AuthManager.shared.currentUser?.id)
+        .isCompleted
     @State private var selectedTab = 0
     @State private var runTabAnchor: TabBarItemAnchor?
     @State private var tabBarLayoutRevision = 0
@@ -72,6 +75,10 @@ struct RootView: View {
                 }
         }
         .environmentObject(runCalorieReminder)
+        .environment(\.openRunTab) {
+            selectedTab = MainTab.run.rawValue
+        }
+        .tint(FitureTheme.coral)
         .background {
             TabBarItemAnchorObserver(
                 tabIndex: MainTab.run.rawValue,
@@ -108,7 +115,8 @@ struct RootView: View {
 
     @ViewBuilder
     private var runTabSpeechBubbleOverlay: some View {
-        if selectedTab != MainTab.run.rawValue,
+        // Home ではキャラクターの吹き出しが Run をすすめるので、ユーザータブでだけ出す
+        if selectedTab == MainTab.user.rawValue,
            runCalorieReminder.isExcessActive,
            let excess = runCalorieReminder.excessKcal {
             GeometryReader { proxy in
@@ -140,4 +148,16 @@ struct RootView: View {
 #Preview {
     RootView()
         .environmentObject(AuthManager.shared)
+}
+
+private struct OpenRunTabKey: EnvironmentKey {
+    static let defaultValue: () -> Void = {}
+}
+
+extension EnvironmentValues {
+    /// Run タブに切り替える（目標を超えたときに運動をすすめる）
+    var openRunTab: () -> Void {
+        get { self[OpenRunTabKey.self] }
+        set { self[OpenRunTabKey.self] = newValue }
+    }
 }

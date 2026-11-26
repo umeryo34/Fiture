@@ -71,6 +71,11 @@ final class HealthKitCalorieService {
                 quantitySamplePredicate: predicate,
                 options: .cumulativeSum
             ) { _, statistics, error in
+                // その日の記録がまだ無いだけのときは 0 kcal として扱う
+                if let error = error as? HKError, error.code == .errorNoData {
+                    continuation.resume(returning: 0)
+                    return
+                }
                 if let error {
                     continuation.resume(throwing: error)
                     return

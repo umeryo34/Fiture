@@ -17,6 +17,8 @@ struct CaloriesEntry: Codable, Identifiable {
     let fat: Double?
     let carbs: Double?
     let createdAt: Date
+    /// 朝・昼・夜・間食（以前の記録は nil）
+    var mealType: MealType?
     
     enum CodingKeys: String, CodingKey {
         case id
@@ -31,7 +33,8 @@ struct CaloriesEntry: Codable, Identifiable {
     }
     
     // 通常のイニシャライザー（Previewやテスト用）
-    init(id: Int, userId: UUID, date: Date, foodName: String, calories: Double, protein: Double? = nil, fat: Double? = nil, carbs: Double? = nil, createdAt: Date) {
+    init(id: Int, userId: UUID, date: Date, foodName: String, calories: Double, protein: Double? = nil, fat: Double? = nil, carbs: Double? = nil, createdAt: Date, mealType: MealType? = nil) {
+        self.mealType = mealType
         self.id = id
         self.userId = userId
         self.date = date
